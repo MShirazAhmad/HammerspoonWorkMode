@@ -1,0 +1,112 @@
+-- Beginner-friendly starter configuration.
+-- Copy the values you need from here into ~/.hammerspoon/config/default.lua.
+-- This file is meant to show the smallest useful first setup.
+
+local home = os.getenv("HOME")
+
+return {
+    user = {
+        activity_log_path = home .. "/web-activity.log",
+        marker_log_path = home .. "/.hammerspoon/hard-blocker.marker.log",
+        geofence_state_path = home .. "/.hammerspoon/manage-py-geofence.state",
+    },
+    timers = {
+        scan_seconds = 2,
+        activity_log_seconds = 20,
+        location_poll_seconds = 5,
+        overlay_default_seconds = 120,
+        lockout_base_seconds = 180,
+    },
+    thresholds = {
+        max_violations_before_long_lockout = 3,
+        off_task_lockout_confidence = 0.9,
+    },
+    schedule = {
+        enabled = true,
+        workdays = {
+            [2] = true,
+            [3] = true,
+            [4] = true,
+            [5] = true,
+            [6] = true,
+        },
+        start_hour = 9,
+        end_hour = 17,
+    },
+    location = {
+        enabled = true,
+        lab_relaxes_blocks = true,
+        lab_geofence = {
+            -- Fill in these 3 values with your approved research location.
+            latitude = 0.0,
+            longitude = 0.0,
+            radius = 75,
+        },
+    },
+    blocked_apps = {
+        -- Fill in 1-3 apps you do not want to use outside your approved place.
+        "Books",
+        "Terminal",
+        "TextEdit",
+    },
+    browser = {
+        supported_apps = {
+            "Safari",
+            "Google Chrome",
+            "Brave Browser",
+            "Arc",
+            "Microsoft Edge",
+            "Opera",
+            "Vivaldi",
+        },
+        allowed_domains = {
+            -- Fill in a few research-safe sites you use often.
+            "arxiv.org",
+            "scholar.google.com",
+            "overleaf.com",
+            "github.com",
+        },
+        blocked_domains = {
+            -- Fill in a few sites that usually break your focus.
+            "youtube.com",
+            "reddit.com",
+            "instagram.com",
+        },
+        blocked_title_terms = {
+            "shopping",
+            "sports",
+            "entertainment",
+        },
+    },
+    categories = {
+        research_apps = {
+            "Safari",
+            "Google Chrome",
+            "Brave Browser",
+            "Arc",
+            "Preview",
+            "Zotero",
+            "Visual Studio Code",
+            "Code",
+        },
+        distraction_keywords = {
+            "youtube",
+            "reddit",
+            "shopping",
+            "sports",
+            "gaming",
+        },
+        research_keywords = {
+            "paper",
+            "research",
+            "analysis",
+            "experiment",
+            "dissertation",
+        },
+    },
+    overlay = {
+        title = "RESEARCH MODE",
+        subtitle = "Return to writing, reading, coding, or analysis.",
+        background_alpha = 0.96,
+    },
+}
