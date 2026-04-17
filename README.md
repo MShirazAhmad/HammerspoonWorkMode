@@ -1,0 +1,2 @@
+# HammerspoonWorkMode
+
