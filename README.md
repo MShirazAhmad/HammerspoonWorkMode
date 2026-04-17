@@ -118,6 +118,7 @@ Default behavior:
 - app blocking is relaxed
 - distracting tabs are not aggressively hidden
 - overlays do not keep interrupting normal work
+- reminder popups should not interrupt normal work
 - activity is still logged
 - the menubar label shows that the approved location is active
 - you can use tools like Terminal, browsers, editors, PDFs, and other research tools without the system getting in your way

@@ -20,6 +20,7 @@ In plain language:
 
 - this module lets you pick one place where your MacBook should not be limited
 - when you are sitting in that place, the blocker relaxes
+- when you are sitting in that place, reminder popups should not interrupt you
 - when you leave that place, the rest of the system starts controlling behavior more strictly
 
 ## File Used By This Module

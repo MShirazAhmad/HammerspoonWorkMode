@@ -87,6 +87,13 @@ This approved place is your freedom zone.
 
 When you are physically there, the system should mostly leave you alone.
 
+That means:
+
+- no app blocking
+- no browser nagging
+- no reminder popups
+- no extra control over tools like Terminal
+
 When you are not there, the system should become stricter.
 
 If you do not know these values, read `docs/find-gps-coordinates.md`.
