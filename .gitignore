@@ -1,0 +1,10 @@
+.DS_Store
+Thumbs.db
+
+# Local editor/system clutter
+*.swp
+*.swo
+*~
+
+# Local runtime/debug output
+*.log
