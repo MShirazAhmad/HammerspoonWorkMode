@@ -10,7 +10,7 @@ Just open:
 
 Then change these 5 things first.
 
-## 1. Your Approved Location Latitude
+## 1. Your Work Location Latitude
 
 Find:
 
@@ -18,9 +18,9 @@ Find:
 latitude = ...
 ```
 
-Replace it with the latitude of the place where you want full freedom for research.
+Replace it with the latitude of the place where you want focus to be enforced, such as your lab desk.
 
-## 2. Your Approved Location Longitude
+## 2. Your Work Location Longitude
 
 Find:
 
@@ -30,7 +30,7 @@ longitude = ...
 
 Replace it with the longitude of the same place.
 
-## 3. Your Approved Location Radius
+## 3. Your Work Location Radius
 
 Find:
 
@@ -46,7 +46,7 @@ Use a reasonable starting radius such as:
 
 This is measured in meters.
 
-## 4. Your Blocked Apps Outside That Place
+## 4. Your Blocked Apps Inside That Place
 
 Find:
 
@@ -62,14 +62,15 @@ Example:
 ```lua
 blocked_apps = {
     "Books",
+    "Claude",
     "Terminal",
     "TextEdit",
 }
 ```
 
-If you do not want to use Terminal or command prompt tools outside your research location, list them here.
+These apps will be force-closed when you are inside the geofence during work hours.
 
-## 5. Your Blocked Websites Outside That Place
+## 5. Your Blocked Websites Inside That Place
 
 Find:
 
@@ -94,8 +95,8 @@ blocked_domains = {
 
 1. Save the file.
 2. Reload Hammerspoon.
-3. Test the system inside your approved place.
-4. Test the system outside your approved place.
+3. Test the system inside your work location — it should enforce.
+4. Test the system outside your work location — it should relax.
 
 ## If You Want An Easier Starting Point
 

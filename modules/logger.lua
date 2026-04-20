@@ -4,6 +4,61 @@
 local Logger = {}
 Logger.__index = Logger
 
+local function isFiniteNumber(value)
+    return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
+end
+
+local function isArrayTable(tbl)
+    local maxIndex = 0
+    local count = 0
+    for key, _ in pairs(tbl) do
+        if type(key) ~= "number" or key < 1 or key % 1 ~= 0 then
+            return false
+        end
+        if key > maxIndex then
+            maxIndex = key
+        end
+        count = count + 1
+    end
+    return maxIndex == count
+end
+
+local function sanitizeForJSON(value, seen)
+    local valueType = type(value)
+    if valueType == "nil" or valueType == "boolean" then
+        return value
+    end
+    if valueType == "number" then
+        return isFiniteNumber(value) and value or tostring(value)
+    end
+    if valueType == "string" then
+        return value
+    end
+    if valueType ~= "table" then
+        return tostring(value)
+    end
+
+    if seen[value] then
+        return "<cycle>"
+    end
+    seen[value] = true
+
+    local out = nil
+    if isArrayTable(value) then
+        out = {}
+        for index = 1, #value do
+            out[index] = sanitizeForJSON(value[index], seen)
+        end
+    else
+        out = {}
+        for key, nested in pairs(value) do
+            out[tostring(key)] = sanitizeForJSON(nested, seen)
+        end
+    end
+    seen[value] = nil
+    return out
+end
+
 function Logger.new(config)
     local self = setmetatable({}, Logger)
     self.config = config
@@ -48,7 +103,19 @@ end
 
 function Logger:_encode(record)
     -- Use Hammerspoon's JSON encoder so snapshots stay valid and machine-friendly.
-    return hs.json.encode(record, true, true)
+    local ok, encoded = pcall(hs.json.encode, record, true, true)
+    if ok and type(encoded) == "string" then
+        return encoded
+    end
+
+    local sanitized = sanitizeForJSON(record, {})
+    local safeOk, safeEncoded = pcall(hs.json.encode, sanitized, true, true)
+    if safeOk and type(safeEncoded) == "string" then
+        hs.printf("[research-mode] logger sanitized non-JSON-safe record: %s", tostring(encoded))
+        return safeEncoded
+    end
+
+    return '{"type":"logger_error","reason":"json_encode_failed"}'
 end
 
 function Logger:activity(record, force)

@@ -4,11 +4,11 @@
 
 The idea is simple and very practical:
 
-- you choose one approved location where you do your real research work
-- when you are physically sitting in that location, the system stays out of your way
-- when you leave that location, the system starts controlling how you use your MacBook so it is harder to drift
+- you define one location as your enforced work zone, such as your lab or desk
+- when you are physically sitting in that location, the system actively controls your behavior and blocks distractions
+- when you leave that location, the system relaxes and lets you use your MacBook freely
 
-That means one place is your freedom zone for research, and everywhere else becomes a guarded zone.
+That means your desk is your guarded zone for focused work, and everywhere else becomes your freedom zone.
 
 ## Start Here
 
@@ -31,13 +31,13 @@ If you want the shortest possible path, use the quick start below.
 2. Put this repo somewhere stable on your computer.
 3. Link or copy `init.lua`, `modules/`, and `config/` into `~/.hammerspoon/`.
 4. Open `~/.hammerspoon/config/default.lua`.
-5. Set your approved GPS place:
+5. Set your enforced work location GPS coordinates:
    `latitude`, `longitude`, `radius`
-6. Leave `lab_relaxes_blocks = true` if you want that approved place to behave like `ALLOW`.
+6. Leave `block_inside_geofence = true` so that location is treated as `BLOCK`.
 7. Edit your blocked apps and browser rules.
 8. Give Hammerspoon Accessibility, Automation, and Location permissions.
 9. Reload Hammerspoon.
-10. Test one allowed place and one blocked place.
+10. Test behavior inside your work location and outside it.
 
 If you want the least confusing first setup, open:
 
@@ -48,31 +48,31 @@ If you want the least confusing first setup, open:
 
 Think of it like this:
 
-- when you are in your chosen research location, such as your lab or another approved work spot, there are no extra limitations on what you use
-- you can open Terminal, browsers, editors, PDFs, research tools, or whatever else you need
-- once you leave that location, the system starts watching and controlling behavior more strictly
+- when you are physically at your work location, such as your lab desk, the system enforces focus rules
+- blocked apps are closed, distracting websites are interrupted, and off-task behavior triggers overlays
+- once you leave that location, the system relaxes completely and lets you use your MacBook freely
 
-Outside the approved place, the system can react to things like:
+Inside the enforced zone, the system reacts to things like:
 
-- opening blocked apps
-- visiting distracting websites
-- switching to off-task tabs
-- using tools like Terminal or command prompt if you decided those should be restricted in `BLOCK` mode
+- opening blocked apps such as Claude, Books, or Terminal
+- visiting distracting websites like YouTube or Reddit
+- switching to off-task browser tabs
+- activity that does not look like research
 
 So the goal is not "block everything all the time."
 
 The goal is:
 
-- full freedom in the place where you do serious research
-- behavior control outside that place so research time is protected
+- enforced discipline at your desk where research is expected
+- full freedom everywhere else so the system does not follow you home
 
 ## Minimum Working Setup
 
 If you want the easiest first version, do only this:
 
 - turn on `location.enabled = true`
-- enter one approved location in `lab_geofence`
-- leave `lab_relaxes_blocks = true`
+- enter your work location coordinates in `lab_geofence`
+- set `block_inside_geofence = true`
 - keep weekday work hours
 - block only a few obvious distractions
 - keep a few research-safe domains such as `arxiv.org` and `overleaf.com`
@@ -81,12 +81,12 @@ That is enough to get a real first version running.
 
 The core idea is intentionally simple:
 
-- `ALLOW` mode means you are inside an approved GPS area, such as the lab.
-- `BLOCK` mode means you are outside that approved GPS area, such as at home or elsewhere.
+- `BLOCK` mode means you are inside the configured GPS geofence, such as your lab or desk.
+- `ALLOW` mode means you are outside that geofence, such as at home or elsewhere.
 
-When the system is in `ALLOW` mode, it stays out of your way so you can use your MacBook freely in the place you chose for real work.
+When the system is in `BLOCK` mode, it actively enforces focus by closing blocked apps, detecting distracting browser activity, showing full-screen warnings, and logging what happened.
 
-When the system is in `BLOCK` mode, it actively protects writing, reading, coding, and analysis time by closing blocked apps, detecting distracting browser activity, showing full-screen warnings, and logging what happened.
+When the system is in `ALLOW` mode, it stays out of your way completely.
 
 This repo turns a large, prebuilt `~/.hammerspoon/init.lua` into a modular project you can version, tune, and extend.
 
@@ -95,8 +95,8 @@ This repo turns a large, prebuilt `~/.hammerspoon/init.lua` into a modular proje
 Think of the project as a state machine driven by location first.
 
 1. `location_mode.lua` checks GPS against your configured geofence.
-2. If you are inside the approved radius, the system enters `ALLOW`.
-3. If you are outside the approved radius, the system enters `BLOCK`.
+2. If you are inside the geofence, the system enters `BLOCK`.
+3. If you are outside the geofence, the system enters `ALLOW`.
 4. `schedule.lua` narrows enforcement to the hours you care about.
 5. `app_blocker.lua`, `browser_filter.lua`, `activity_classifier.lua`, and `overlay.lua` enforce the current mode.
 6. `logger.lua` records snapshots, events, and violations so you can review behavior later.
@@ -109,36 +109,34 @@ In short:
 
 ## Allow / Block Behavior
 
-### `ALLOW` Mode
-
-`ALLOW` mode is intended for an approved place such as the lab.
-
-Default behavior:
-
-- app blocking is relaxed
-- distracting tabs are not aggressively hidden
-- overlays do not keep interrupting normal work
-- reminder popups should not interrupt normal work
-- activity is still logged
-- the menubar label shows that the approved location is active
-- you can use tools like Terminal, browsers, editors, PDFs, and other research tools without the system getting in your way
-
-This is the location where you trust yourself to work freely.
-
 ### `BLOCK` Mode
 
-`BLOCK` mode is intended for places where distraction risk is higher, such as home.
+`BLOCK` mode is active when you are inside the configured geofence, such as at your lab desk.
 
 Default behavior:
 
-- blocked non-research apps are closed if they become active
+- blocked apps are closed if they become active
 - distracting browser URLs and titles trigger enforcement
 - off-task behavior can trigger a full-screen overlay
-- repeated violations can increase lockout duration
+- repeated violations increase lockout duration
 - events and snapshots are logged for later review
-- tools like Terminal or command prompt can also be restricted if you put them in the blocked app list
+- tools like Terminal, Claude, or other apps on the block list are force-closed
 
-This is the behavior-control mode that protects research time outside your approved work location.
+This is the enforcement mode that protects research time while you are at your desk.
+
+### `ALLOW` Mode
+
+`ALLOW` mode is active when you are outside the geofence, such as at home or elsewhere.
+
+Default behavior:
+
+- app blocking is off
+- browser enforcement is off
+- overlays do not appear
+- activity is still logged
+- the menubar shows `ALLOW`
+
+This is the relaxed mode. The system does not follow you home.
 
 ## Research Use Case
 
@@ -151,15 +149,14 @@ This project is built around work such as:
 - analysis notebooks and scripts
 - Zotero / Overleaf workflows
 - research-related browsing
-- research-related AI use
 
 A very simple real-world use case is:
 
-- choose your lab as the approved location
-- when you are sitting in the lab, use your MacBook however you need for research
-- when you leave the lab, the system becomes stricter and starts controlling distracting or non-research behavior
+- define your lab desk as the enforced geofence
+- when you are sitting there, the system keeps you focused by blocking distractions
+- when you leave, the system stops enforcing and you can use your MacBook freely
 
-That can include browser behavior, app behavior, and even apps like Terminal if you choose to block them outside the approved location.
+Blocked behavior at your desk can include apps like Claude, Books, or Terminal, browser domains like YouTube or Reddit, and any off-task window activity.
 
 The default configuration assumes that context matters. Browsers, terminals, and editors can all be productive tools, but some apps, domains, and tabs are much more likely to pull attention away from research.
 
@@ -296,4 +293,4 @@ These can be adjusted in `~/.hammerspoon/config/default.lua`.
 
 ## Current Status
 
-This repo is now documented as an `ALLOW` / `BLOCK` GPS-driven research blocker and is structured to replace the older monolithic `.hammerspoon` config over time.
+This repo is documented as a GPS-driven research enforcer where `BLOCK` applies inside your configured geofence and `ALLOW` applies everywhere outside it. It is structured to replace a monolithic `.hammerspoon` config with a modular, version-controlled setup.

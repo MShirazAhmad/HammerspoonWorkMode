@@ -8,21 +8,21 @@ You do not need to understand the code to use this guide.
 
 This project gives your Mac two modes:
 
-- `ALLOW`
 - `BLOCK`
+- `ALLOW`
 
 Simple meaning:
 
-- `ALLOW` means you are in one approved place, such as a lab
-- `BLOCK` means you are anywhere else
+- `BLOCK` means you are inside your configured work location, such as your lab desk
+- `ALLOW` means you are anywhere else
 
 This is meant to protect research time in a very practical way:
 
-- choose one place where you want full freedom for serious work
-- when you are sitting there, the system should not limit how you use your MacBook
-- once you leave that place, the system becomes stricter and starts controlling behavior
+- choose one place where you want the system to enforce focus discipline
+- when you are sitting there, the system controls behavior and closes distractions
+- once you leave that place, the system relaxes and does not limit anything
 
-In `BLOCK`, the system can close blocked apps, react to distracting websites, show a full-screen warning, and restrict tools like Terminal if you put them on your blocked list.
+In `BLOCK`, the system can close blocked apps, react to distracting websites, show a full-screen warning, and restrict tools like Terminal or Claude if you put them on your blocked list.
 
 ## What You Need Before Starting
 
@@ -61,14 +61,14 @@ If you want a beginner example while editing, keep this open too:
 
 - `config/starter.lua.example`
 
-## Step 3: Enter One Approved GPS Place
+## Step 3: Enter Your Enforced Work Location
 
 Find:
 
 ```lua
 location = {
     enabled = true,
-    lab_relaxes_blocks = true,
+    block_inside_geofence = true,
     lab_geofence = {
         latitude = ...,
         longitude = ...,
@@ -79,22 +79,22 @@ location = {
 
 Put in:
 
-- the latitude of your approved place
-- the longitude of your approved place
+- the latitude of your work location, such as your lab desk
+- the longitude of that same place
 - a radius in meters
 
-This approved place is your freedom zone.
+This location is your enforced zone.
 
-When you are physically there, the system should mostly leave you alone.
+When you are physically there, the system actively controls your behavior.
 
 That means:
 
-- no app blocking
-- no browser nagging
-- no reminder popups
-- no extra control over tools like Terminal
+- blocked apps are force-closed
+- distracting browser tabs trigger enforcement
+- off-task behavior shows a full-screen overlay
+- tools like Claude or Terminal are blocked if you listed them
 
-When you are not there, the system should become stricter.
+When you leave, the system relaxes completely.
 
 If you do not know these values, read `docs/find-gps-coordinates.md`.
 
@@ -108,9 +108,9 @@ For your first setup:
 
 Example of a simple first setup:
 
-- approved location = your lab
-- blocked apps outside the lab = `Books`, `Terminal`, `TextEdit`
-- blocked sites outside the lab = `youtube.com`, `reddit.com`
+- enforced location = your lab desk
+- blocked apps inside the lab = `Books`, `Claude`, `Terminal`, `TextEdit`
+- blocked sites inside the lab = `youtube.com`, `reddit.com`
 
 You can always add more later.
 
@@ -138,11 +138,11 @@ After saving `default.lua`:
 
 Now test the system:
 
-1. go to your approved place and check whether it behaves like `ALLOW`
-2. go outside that place and check whether it behaves like `BLOCK`
-3. open a blocked app in `BLOCK`
-4. open a blocked website in `BLOCK`
-5. if you blocked Terminal or command prompt tools, test those too outside the approved place
+1. go to your work location and check whether it behaves like `BLOCK`
+2. go outside that place and check whether it behaves like `ALLOW`
+3. open a blocked app while inside the geofence
+4. open a blocked website while inside the geofence
+5. if you blocked Terminal, Claude, or other tools, test those inside the enforced zone
 
 For a more complete test, read:
 

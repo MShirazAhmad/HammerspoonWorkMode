@@ -85,8 +85,15 @@ end
 local function enforce()
     -- Recompute the current enforcement mode on every pass because GPS and
     -- schedule can both change over time.
+    local wasStrict = state.strictMode
     state.strictMode = strictModeActive()
     overlay:setStrictMode(state.strictMode)
+
+    -- Reset escalation counter when transitioning out of BLOCK mode so
+    -- violations from a previous session don't carry forward.
+    if wasStrict and not state.strictMode then
+        state.violationCount = 0
+    end
 
     -- In ALLOW mode we still log activity, but we do not actively intervene.
     if not state.strictMode then

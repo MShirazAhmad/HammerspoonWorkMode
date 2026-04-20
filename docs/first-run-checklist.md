@@ -35,30 +35,31 @@ Check:
 - `~/web-activity.log` exists
 - `~/.hammerspoon/hard-blocker.marker.log` exists
 
-### 4. `ALLOW` Mode Works
+### 4. `BLOCK` Mode Works
 
-Go inside your approved place and check:
+Go inside your work location geofence and check:
 
-- the system behaves more relaxed
-- blocked behavior is reduced
+- the system becomes strict
+- the menubar shows `BLOCK`
 
-### 5. `BLOCK` Mode Works
+### 5. `ALLOW` Mode Works
 
-Go outside your approved place and check:
+Go outside your work location and check:
 
-- the system becomes more strict
+- the system relaxes
+- the menubar shows `ALLOW`
 
 ### 6. Blocked App Test
 
-While in `BLOCK`:
+While inside the geofence (`BLOCK`):
 
-1. open a blocked app
+1. open a blocked app such as Claude or Books
 2. bring it to the front
 3. see whether it closes
 
 ### 7. Blocked Website Test
 
-While in `BLOCK`:
+While inside the geofence (`BLOCK`):
 
 1. open a supported browser
 2. visit a blocked website

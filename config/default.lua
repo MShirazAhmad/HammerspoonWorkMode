@@ -50,12 +50,15 @@ return {
         -- If false, GPS never changes behavior and the script effectively
         -- relies only on schedule plus the current enforcement code.
         enabled = true,
+        -- When true, the geofence is the BLOCK zone: inside = enforced,
+        -- outside = relaxed. Set to false to flip (geofence becomes the ALLOW zone).
+        block_inside_geofence = true,
         -- When true, being inside the geofence relaxes BLOCK enforcement.
         lab_relaxes_blocks = true,
         lab_geofence = {
             -- Replace these coordinates with your approved ALLOW-mode location.
-            latitude = 33.49317303257537,
-            longitude = -86.79794402590039,
+            latitude = 33.49996110320434,
+            longitude = -86.79905416710444,
             -- Radius is in meters.
             radius = 60.96,
         },
@@ -64,6 +67,7 @@ return {
     blocked_apps = {
         "Books",
         "Codex",
+        "Claude",
         "Terminal",
         "iTerm2",
         "TextEdit",
