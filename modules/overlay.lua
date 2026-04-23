@@ -4,15 +4,32 @@
 local Overlay = {}
 Overlay.__index = Overlay
 
-function Overlay.new(config, logger)
+function Overlay.new(config, logger, messages)
     local self = setmetatable({}, Overlay)
     self.config = config
     self.logger = logger
+    self.messages = messages
     self.canvas = nil
     self.timer = nil
     self.endsAt = 0
     self.strictMode = false
+    self.terminalPromptTap = nil
     return self
+end
+
+function Overlay:message(key, fallback)
+    if self.messages then
+        return self.messages:get(key, fallback)
+    end
+    return fallback or ""
+end
+
+function Overlay:title()
+    return "Overlay"
+end
+
+function Overlay:description()
+    return "Shows the full-screen intervention and countdown after a detected violation."
 end
 
 local function fullFrame()
@@ -49,7 +66,7 @@ function Overlay:ensureCanvas()
     -- Element 2 is the fixed title banner.
     self.canvas[2] = {
         type = "text",
-        text = self.config.overlay.title or "RESEARCH MODE",
+        text = self:message("overlay.title"),
         textSize = 68,
         textColor = { white = 1, alpha = 1 },
         textAlignment = "center",
@@ -87,6 +104,10 @@ end
 function Overlay:hide()
     -- Hiding the overlay also stops the countdown timer so there is no orphaned
     -- timer continuing to run in the background.
+    if self.terminalPromptTap then
+        self.terminalPromptTap:stop()
+        self.terminalPromptTap = nil
+    end
     if self.timer then
         self.timer:stop()
         self.timer = nil
@@ -103,7 +124,7 @@ function Overlay:_refresh()
         return
     end
     local secondsLeft = math.max(0, math.ceil(self.endsAt - hs.timer.secondsSinceEpoch()))
-    self.canvas[5].text = "Remaining: " .. countdownText(secondsLeft)
+    self.canvas[5].text = self:message("overlay.remaining_prefix") .. countdownText(secondsLeft)
     if secondsLeft <= 0 then
         self:hide()
     end
@@ -120,8 +141,9 @@ end
 function Overlay:show(message, durationSeconds)
     -- A generic display method used by specific intervention styles.
     self:ensureCanvas()
-    self.canvas[3].text = tostring(message or "Return to research work.")
-    self.canvas[4].text = tostring(self.config.overlay.subtitle or "")
+    self.canvas[2].text = self:message("overlay.title")
+    self.canvas[3].text = tostring(message or self:message("overlay.fallback_message"))
+    self.canvas[4].text = tostring(self:message("overlay.subtitle"))
     self.endsAt = hs.timer.secondsSinceEpoch() + math.max(1, durationSeconds or self.config.timers.overlay_default_seconds)
     self:_refresh()
     self.canvas:show()
@@ -135,13 +157,60 @@ end
 
 function Overlay:showIntervention(kind, details, violationCount)
     -- Escalate duration once the same session shows repeated drift.
-    local reason = (details and details.reason) or "Off-task behavior detected."
+    local reason = (details and details.reason) or self:message("overlay.fallback_reason")
     local duration = self.config.timers.overlay_default_seconds
     if violationCount >= (self.config.thresholds.max_violations_before_long_lockout or 3) then
         duration = self.config.timers.lockout_base_seconds * violationCount
     end
-    self:show(string.upper(kind) .. " BLOCK\n\n" .. reason, duration)
+    self:show(string.upper(kind) .. " " .. self:message("overlay.block_suffix") .. "\n\n" .. reason, duration)
     self.logger:marker("overlay kind=" .. tostring(kind) .. " duration=" .. tostring(duration))
+end
+
+function Overlay:showTerminalPrompt(callback)
+    self:ensureCanvas()
+    self.canvas[2].text = self:message("terminal_guard.prompt.title")
+    self.canvas[3].text = self:message("terminal_guard.prompt.question")
+    self.canvas[4].text = self:message("terminal_guard.prompt.instructions")
+    self.canvas[5].text = self:message("terminal_guard.prompt.waiting")
+    self.endsAt = hs.timer.secondsSinceEpoch() + 300
+    self.canvas:show()
+
+    if self.timer then
+        self.timer:stop()
+        self.timer = nil
+    end
+    if self.terminalPromptTap then
+        self.terminalPromptTap:stop()
+        self.terminalPromptTap = nil
+    end
+
+    self.terminalPromptTap = hs.eventtap.new({ hs.eventtap.event.types.keyDown }, function(event)
+        local key = tostring(event:getCharactersIgnoringModifiers() or ""):lower()
+        if key ~= "y" and key ~= "n" then
+            return true
+        end
+
+        if self.terminalPromptTap then
+            self.terminalPromptTap:stop()
+            self.terminalPromptTap = nil
+        end
+        self:hide()
+
+        if callback then
+            callback(key == "y")
+        end
+        return true
+    end)
+    self.terminalPromptTap:start()
+end
+
+function Overlay:statusSummary()
+    local active = self.canvas ~= nil and self.endsAt > hs.timer.secondsSinceEpoch()
+    if not active then
+        return self:message("overlay.idle")
+    end
+    local secondsLeft = math.max(0, math.ceil(self.endsAt - hs.timer.secondsSinceEpoch()))
+    return self:message("overlay.active_countdown_prefix") .. countdownText(secondsLeft)
 end
 
 return Overlay

@@ -11,17 +11,17 @@ It uses your Mac's location and compares it to one approved GPS area.
 
 Simple rule:
 
-- inside the approved area = `ALLOW`
-- outside the approved area = `BLOCK`
+- inside the approved area = `BLOCK`
+- outside the approved area = `ALLOW`
 
 This is the most important module in the whole project because the rest of the behavior depends on it.
 
 In plain language:
 
-- this module lets you pick one place where your MacBook should not be limited
-- when you are sitting in that place, the blocker relaxes
-- when you are sitting in that place, reminder popups should not interrupt you
-- when you leave that place, the rest of the system starts controlling behavior more strictly
+- this module lets you pick one place where your MacBook should enforce focus
+- when you are sitting in that place, the blocker becomes strict
+- when you leave that place, reminder popups and app blocking relax
+- when you leave that place, the rest of the system stops controlling behavior
 
 ## File Used By This Module
 
@@ -38,6 +38,7 @@ Find the `location = { ... }` section.
 Important settings:
 
 - `enabled`
+- `block_inside_geofence`
 - `lab_relaxes_blocks`
 - `lab_geofence.latitude`
 - `lab_geofence.longitude`
@@ -62,18 +63,18 @@ If you followed the main setup guide, this is already done.
 5. Save the file
 6. Reload Hammerspoon
 
-## What `lab_relaxes_blocks` Means
+## What `block_inside_geofence` Means
 
 If this is set to `true`:
 
-- being inside the approved area relaxes the blocker
-- this usually behaves like `ALLOW`
-- this is the setting you want if the approved place should have no extra limitations
+- being inside the approved area enables strict enforcement
+- this behaves like `BLOCK`
+- this is the default project behavior
 
 If this is set to `false`:
 
-- the system still knows your location
-- but being inside the area does not relax the blocker
+- the geofence no longer means "strict work zone"
+- you can then use `lab_relaxes_blocks = true` to make the geofence the relaxed area instead
 
 For most users, `true` is the right choice.
 
@@ -96,9 +97,9 @@ When this module is off, GPS will no longer control `ALLOW` and `BLOCK`.
 1. Reload Hammerspoon
 2. Look for the location label in the menu bar
 3. Go clearly inside your approved area
-4. Check whether behavior changes toward `ALLOW`
+4. Check whether behavior changes toward `BLOCK`
 5. Go clearly outside your approved area
-6. Check whether behavior changes toward `BLOCK`
+6. Check whether behavior changes toward `ALLOW`
 
 ## If It Does Not Work
 

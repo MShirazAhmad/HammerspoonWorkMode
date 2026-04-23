@@ -63,7 +63,16 @@ function Logger.new(config)
     local self = setmetatable({}, Logger)
     self.config = config
     self.lastSnapshot = nil
+    self.lastMarkerMessage = nil
     return self
+end
+
+function Logger:title()
+    return "Logger"
+end
+
+function Logger:description()
+    return "Records marker events and activity snapshots so status can explain recent blocker decisions."
 end
 
 function Logger:isoTimestamp()
@@ -94,11 +103,16 @@ end
 function Logger:marker(message)
     -- Marker logs are meant to be skimmed by a person trying to understand
     -- what the blocker did and why.
+    self.lastMarkerMessage = tostring(message)
     self:_appendLine(
         self.config.user.marker_log_path,
         os.date("%Y-%m-%d %H:%M:%S") .. " " .. tostring(message)
     )
     hs.printf("[research-mode] %s", tostring(message))
+end
+
+function Logger:lastMarker()
+    return self.lastMarkerMessage
 end
 
 function Logger:_encode(record)

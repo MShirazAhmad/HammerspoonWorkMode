@@ -8,18 +8,16 @@ You are outside the approved GPS radius and inside your scheduled research hours
 
 Result:
 
-- mode becomes `BLOCK`
-- blocked non-research apps are enforced
-- distracting tabs can trigger interventions
+- mode becomes `ALLOW`
+- enforcement is relaxed
 - activity continues to be logged
 
 Typical flow:
 
 1. `location_mode.lua` reports outside geofence.
-2. `schedule.lua` reports active work time.
-3. `init.lua` treats the current session as strict.
-4. `app_blocker.lua` and `browser_filter.lua` enforce the rules.
-5. `overlay.lua` appears if you drift into off-task behavior.
+2. `schedule.lua` may still report active work time.
+3. `init.lua` keeps the session non-strict because location is relaxed.
+4. Blocking modules stay idle.
 
 ## Example 2: Lab During Research Hours
 
@@ -27,16 +25,17 @@ You are inside the approved GPS radius and inside scheduled research hours.
 
 Result:
 
-- mode becomes `ALLOW`
-- strict enforcement is relaxed
+- mode becomes `BLOCK`
+- strict enforcement is active
 - logging continues
-- the environment stays observable without constant punishment
+- blocked apps and browser rules can intervene
 
 Typical flow:
 
 1. `location_mode.lua` reports inside geofence.
-2. `init.lua` treats the session as allowed if `lab_relaxes_blocks = true`.
-3. Research tools remain usable with less friction.
+2. `schedule.lua` reports active work time.
+3. `init.lua` treats the session as strict.
+4. Blocking modules enforce the rules.
 
 ## Example 3: YouTube During Analysis
 

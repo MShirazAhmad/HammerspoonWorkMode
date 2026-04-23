@@ -8,8 +8,8 @@ The goal is to run this project from `~/.hammerspoon` while keeping the source c
 
 The project has one primary operating rule:
 
-- inside your approved GPS radius: `ALLOW`
-- outside your approved GPS radius: `BLOCK`
+- inside your approved GPS radius: `BLOCK`
+- outside your approved GPS radius: `ALLOW`
 
 ## Prerequisites
 
@@ -81,6 +81,7 @@ Symlinks are usually better for active development.
 Open `~/.hammerspoon/config/default.lua` and set:
 
 - `location.enabled`
+- `location.block_inside_geofence`
 - `location.lab_relaxes_blocks`
 - `location.lab_geofence.latitude`
 - `location.lab_geofence.longitude`
@@ -88,12 +89,12 @@ Open `~/.hammerspoon/config/default.lua` and set:
 
 Interpretation:
 
-- inside radius -> `ALLOW`
-- outside radius -> `BLOCK`
+- inside radius -> `BLOCK`
+- outside radius -> `ALLOW`
 
-If you want the lab to disable strict enforcement, leave `lab_relaxes_blocks = true`.
+If you want the default behavior, leave `block_inside_geofence = true`.
 
-If you want GPS to be informative only and never relax enforcement, set `lab_relaxes_blocks = false`.
+If you want to flip the model so the geofence becomes the relaxed area instead, set `block_inside_geofence = false` and then use `lab_relaxes_blocks = true`.
 
 ## Configure Work-Hour Enforcement
 
@@ -131,12 +132,52 @@ Check these values:
 - `user.activity_log_path`
 - `user.marker_log_path`
 - `user.geofence_state_path`
+- `user.terminal_guard_state_path`
+- `user.messages_path`
 - `timers.scan_seconds`
 - `timers.activity_log_seconds`
 - `timers.overlay_default_seconds`
 - `timers.lockout_base_seconds`
+- `timers.terminal_guard_decision_seconds`
 
 These control where evidence is stored and how quickly the system reacts.
+
+## Customize Screen And Shell Text
+
+Edit `config/messages.yaml` to rename the full-screen overlay text, Terminal prompt text, zsh blocked-command messages, and notification titles.
+
+The messages file is organized by feature:
+
+```yaml
+terminal_guard:
+  prompt:
+    question: "Is this Terminal command related to your research work?"
+shell:
+  command_blocked:
+    title: "Command blocked"
+```
+
+Use `\n` inside a value when you want a line break on the Hammerspoon screen.
+
+## Configure Terminal Command Guard
+
+The Terminal command guard has two parts:
+
+- Hammerspoon handles `hammerspoon://terminal-check-prompt`, shows the full-screen research question, and writes `~/.hammerspoon/terminal-command-guard.state`.
+- zsh reads that state file before running commands.
+
+Add this line to `~/.zshrc`, using your actual repo path:
+
+```zsh
+source "/path/to/HammerspoonWorkMode/shell/terminal-command-guard.zsh"
+```
+
+During `BLOCK` mode, the first command opens a full-screen question:
+
+- `Y` allows Terminal commands for 30 minutes.
+- `N` blocks Terminal commands for 30 minutes and prints the remaining time for every attempted command.
+
+Terminal and iTerm2 are listed under `terminal_guard.apps`, so the app blocker leaves those apps open and lets the command guard make the decision.
 
 ## Reload Hammerspoon
 
@@ -178,7 +219,7 @@ Test the project deliberately before trusting it.
 - Confirm a blocked app is closed in `BLOCK` mode.
 - Confirm an allowed research site remains usable.
 - Confirm a blocked domain like YouTube triggers intervention.
-- Confirm moving inside the approved GPS radius changes behavior to `ALLOW`.
+- Confirm moving inside the approved GPS radius changes behavior to `BLOCK`.
 
 ## Troubleshooting
 

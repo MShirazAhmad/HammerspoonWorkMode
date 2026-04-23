@@ -31,6 +31,14 @@ function ActivityClassifier.new(config)
     return self
 end
 
+function ActivityClassifier:title()
+    return "Activity Classifier"
+end
+
+function ActivityClassifier:description()
+    return "Scores the visible app, browser host, and titles as research, off-task, or neutral."
+end
+
 function ActivityClassifier:classify(snapshot)
     -- Pull the most useful fields out of the snapshot so classification logic
     -- reads as a sequence of rules instead of deeply nested table access.
@@ -99,6 +107,14 @@ function ActivityClassifier:classify(snapshot)
         confidence = 0.4,
         reason = "Activity is ambiguous from visible app and title context.",
     }
+end
+
+function ActivityClassifier:statusSummary(snapshot)
+    if not snapshot then
+        return "No current snapshot"
+    end
+    local result = self:classify(snapshot)
+    return string.format("%s (%.0f%%): %s", tostring(result.status), (result.confidence or 0) * 100, tostring(result.reason or ""))
 end
 
 return ActivityClassifier

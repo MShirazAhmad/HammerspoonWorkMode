@@ -12,6 +12,10 @@ return {
         -- A small state file that external tools can read to know the current
         -- GPS-derived mode without speaking directly to Hammerspoon.
         geofence_state_path = home .. "/.hammerspoon/manage-py-geofence.state",
+        -- Shell-side terminal guard decisions are written here.
+        terminal_guard_state_path = home .. "/.hammerspoon/terminal-command-guard.state",
+        -- Editable user-facing text shared by Hammerspoon and shell guards.
+        messages_path = home .. "/.hammerspoon/config/messages.yaml",
     },
     timers = {
         -- How often to re-check the current screen context for enforcement.
@@ -24,6 +28,8 @@ return {
         overlay_default_seconds = 180,
         -- Escalation base used for repeat violations in one session.
         lockout_base_seconds = 300,
+        -- How long Y/N terminal decisions last during BLOCK mode.
+        terminal_guard_decision_seconds = 1800,
     },
     thresholds = {
         -- After this many violations, overlays start growing longer.
@@ -53,10 +59,11 @@ return {
         -- When true, the geofence is the BLOCK zone: inside = enforced,
         -- outside = relaxed. Set to false to flip (geofence becomes the ALLOW zone).
         block_inside_geofence = true,
-        -- When true, being inside the geofence relaxes BLOCK enforcement.
+        -- Only used when block_inside_geofence = false. In that alternate mode,
+        -- being inside the geofence relaxes BLOCK enforcement.
         lab_relaxes_blocks = true,
         lab_geofence = {
-            -- Replace these coordinates with your approved ALLOW-mode location.
+            -- Replace these coordinates with your enforced work location.
             latitude = 33.49996110320434,
             longitude = -86.79905416710444,
             -- Radius is in meters.
@@ -74,6 +81,12 @@ return {
         "PyCharm",
         "PyCharm CE",
         "Activity Monitor",
+    },
+    terminal_guard = {
+        apps = {
+            "Terminal",
+            "iTerm2",
+        },
     },
     browser = {
         -- Supported apps are the browsers for which AppleScript tab inspection
@@ -193,9 +206,7 @@ return {
         },
     },
     overlay = {
-        -- Visual text used by the full-screen intervention canvas.
-        title = "RESEARCH MODE",
-        subtitle = "Return to writing, reading, coding, or analysis.",
+        -- Visual canvas settings. User-facing text lives in config/messages.yaml.
         background_alpha = 0.96,
     },
 }

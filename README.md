@@ -288,8 +288,10 @@ By default the project uses paths derived from your existing setup:
 - activity log: `~/web-activity.log`
 - marker log: `~/.hammerspoon/hard-blocker.marker.log`
 - geofence state file: `~/.hammerspoon/manage-py-geofence.state`
+- terminal guard state file: `~/.hammerspoon/terminal-command-guard.state`
+- editable messages: `~/.hammerspoon/config/messages.yaml`
 
-These can be adjusted in `~/.hammerspoon/config/default.lua`.
+Paths can be adjusted in `~/.hammerspoon/config/default.lua`; message text can be edited in `~/.hammerspoon/config/messages.yaml`.
 
 ## Current Status
 

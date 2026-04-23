@@ -10,6 +10,30 @@ function AppBlocker.new(config, logger)
     return self
 end
 
+function AppBlocker:title()
+    return "App Blocker"
+end
+
+function AppBlocker:description()
+    return "Closes the frontmost app when it matches the blocked apps list during BLOCK mode."
+end
+
+local function terminalGuardedApps(config)
+    return (config.terminal_guard and config.terminal_guard.apps) or {
+        "Terminal",
+        "iTerm2",
+    }
+end
+
+local function isTerminalGuardedApp(config, appName)
+    for _, guarded in ipairs(terminalGuardedApps(config)) do
+        if appName == guarded then
+            return true
+        end
+    end
+    return false
+end
+
 function AppBlocker:detectBlockedApp()
     -- Only the frontmost app matters here because that is the app actively
     -- consuming the user's attention right now.
@@ -19,6 +43,10 @@ function AppBlocker:detectBlockedApp()
     end
 
     local appName = app:name()
+    if isTerminalGuardedApp(self.config, appName) then
+        return nil
+    end
+
     for _, blocked in ipairs(self.config.blocked_apps or {}) do
         if appName == blocked then
             -- Return structured details so the caller can both enforce and
@@ -55,6 +83,10 @@ function AppBlocker:enforce(result)
         end
     end
     self.logger:marker("blocked app closed=" .. tostring(result.app))
+end
+
+function AppBlocker:statusSummary()
+    return string.format("%d blocked apps configured", #(self.config.blocked_apps or {}))
 end
 
 return AppBlocker

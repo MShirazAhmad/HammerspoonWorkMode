@@ -1,0 +1,36 @@
+# User-facing text for HammerspoonWorkMode.
+# Use \n inside a value when a screen line break is needed.
+
+overlay:
+  title: "RESEARCH MODE"
+  subtitle: "Return to writing, reading, coding, or analysis."
+  remaining_prefix: "Remaining: "
+  idle: "Idle"
+  active_countdown_prefix: "Active countdown: "
+  fallback_message: "Return to research work."
+  fallback_reason: "Off-task behavior detected."
+  block_suffix: "BLOCK"
+
+terminal_guard:
+  prompt:
+    title: "TERMINAL CHECK"
+    question: "Is this Terminal command related to your research work?"
+    instructions: "Press Y to allow Terminal for 30 minutes.\nPress N to block Terminal commands for 30 minutes."
+    waiting: "Waiting for Y or N"
+  state_reason:
+    allow: "Terminal allowed for research work."
+    block: "Terminal blocked after non-research confirmation."
+    inactive_allow: "Terminal allowed because BLOCK mode is inactive."
+  alert:
+    allow: "Terminal allowed for 30 minutes"
+    block: "Terminal blocked for 30 minutes"
+
+shell:
+  awaiting_confirmation: "Awaiting BLOCK mode terminal confirmation."
+  blocked_default: "Blocked by BLOCK mode terminal check"
+  decision_required: "Decision required before terminal commands are allowed."
+  decision_expired: "Decision window expired. Please answer the BLOCK mode prompt."
+  command_blocked:
+    title: "Command blocked"
+    detail: "{detail} (remaining: {remaining})"
+  allowed_status: "Terminal allowed by Y selection (remaining: {remaining})"

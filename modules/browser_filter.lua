@@ -91,6 +91,14 @@ function BrowserFilter.new(config, logger)
     return self
 end
 
+function BrowserFilter:title()
+    return "Browser Filter"
+end
+
+function BrowserFilter:description()
+    return "Checks the active browser tab, lets research-safe pages pass, and hides distracting pages."
+end
+
 function BrowserFilter:frontmostContext()
     -- If the frontmost app is not a supported browser, the browser filter has
     -- no opinion and returns nil.
@@ -179,6 +187,17 @@ function BrowserFilter:enforce(result)
         app:hide()
     end
     self.logger:marker("browser distraction app=" .. tostring(result.app) .. " url=" .. tostring(result.url or ""))
+end
+
+function BrowserFilter:statusSummary()
+    local context = self:frontmostContext()
+    if not context then
+        return "No supported browser in front"
+    end
+    if context.host then
+        return tostring(context.app) .. ": " .. tostring(context.host)
+    end
+    return tostring(context.app) .. ": tab info unavailable"
 end
 
 return BrowserFilter

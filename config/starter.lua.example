@@ -9,6 +9,8 @@ return {
         activity_log_path = home .. "/web-activity.log",
         marker_log_path = home .. "/.hammerspoon/hard-blocker.marker.log",
         geofence_state_path = home .. "/.hammerspoon/manage-py-geofence.state",
+        terminal_guard_state_path = home .. "/.hammerspoon/terminal-command-guard.state",
+        messages_path = home .. "/.hammerspoon/config/messages.yaml",
     },
     timers = {
         scan_seconds = 2,
@@ -16,6 +18,7 @@ return {
         location_poll_seconds = 5,
         overlay_default_seconds = 120,
         lockout_base_seconds = 180,
+        terminal_guard_decision_seconds = 1800,
     },
     thresholds = {
         max_violations_before_long_lockout = 3,
@@ -35,19 +38,28 @@ return {
     },
     location = {
         enabled = true,
+        -- Keep the approved place as the BLOCK zone for the default project flow.
+        block_inside_geofence = true,
+        -- Only relevant when block_inside_geofence = false.
         lab_relaxes_blocks = true,
         lab_geofence = {
-            -- Fill in these 3 values with your approved research location.
+            -- Fill in these 3 values with your enforced work location.
             latitude = 0.0,
             longitude = 0.0,
             radius = 75,
         },
     },
     blocked_apps = {
-        -- Fill in 1-3 apps you do not want to use outside your approved place.
+        -- Fill in 1-3 apps you do not want to use in your enforced work zone.
         "Books",
         "Terminal",
         "TextEdit",
+    },
+    terminal_guard = {
+        apps = {
+            "Terminal",
+            "iTerm2",
+        },
     },
     browser = {
         supported_apps = {
@@ -105,8 +117,6 @@ return {
         },
     },
     overlay = {
-        title = "RESEARCH MODE",
-        subtitle = "Return to writing, reading, coding, or analysis.",
         background_alpha = 0.96,
     },
 }

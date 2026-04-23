@@ -4,6 +4,7 @@
 -- starts the timers/watchers that keep the automation alive.
 local config = require("config.default")
 local Logger = require("modules.logger")
+local Messages = require("modules.messages")
 local Overlay = require("modules.overlay")
 local Schedule = require("modules.schedule")
 local LocationMode = require("modules.location_mode")
@@ -20,7 +21,9 @@ hs.menuIcon(false)
 -- Create one shared instance of each module so the app behaves like a single
 -- coordinated system instead of a pile of independent scripts.
 local logger = Logger.new(config)
-local overlay = Overlay.new(config, logger)
+local messages = Messages.new((config.user and config.user.messages_path)
+    or ((hs.configdir or (os.getenv("HOME") .. "/.hammerspoon")) .. "/config/messages.yaml"))
+local overlay = Overlay.new(config, logger, messages)
 local schedule = Schedule.new(config)
 local locationMode = LocationMode.new(config, logger)
 local browserFilter = BrowserFilter.new(config, logger)
@@ -39,7 +42,140 @@ local state = {
     logTimer = nil,
     reloadWatcher = nil,
     reloadDebounce = nil,
+    lastClassification = nil,
+    terminalPromptOpen = false,
 }
+
+local configFilePath = (hs.configdir or (os.getenv("HOME") .. "/.hammerspoon")) .. "/config/default.lua"
+local terminalGuardStatePath = (config.user and config.user.terminal_guard_state_path)
+    or (os.getenv("HOME") .. "/.hammerspoon/terminal-command-guard.state")
+local terminalGuardDecisionSeconds = (config.timers and config.timers.terminal_guard_decision_seconds) or 1800
+
+local function timeLabel(hour)
+    return string.format("%02d:00", tonumber(hour) or 0)
+end
+
+local function shellQuote(value)
+    return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
+end
+
+local function stateFileValue(value)
+    return tostring(value or ""):gsub("[\r\n]", " ")
+end
+
+local function writeTerminalGuardState(mode, durationSeconds, reason)
+    local file = io.open(terminalGuardStatePath, "w")
+    if not file then
+        logger:marker("terminal guard state write failed path=" .. tostring(terminalGuardStatePath))
+        return false
+    end
+
+    local untilEpoch = os.time() + math.max(1, durationSeconds or terminalGuardDecisionSeconds)
+    file:write("mode=" .. stateFileValue(mode) .. "\n")
+    file:write("until_epoch=" .. tostring(untilEpoch) .. "\n")
+    file:write("reason=" .. stateFileValue(reason) .. "\n")
+    file:close()
+    return true
+end
+
+local function showTerminalCheckPrompt()
+    if state.terminalPromptOpen then
+        return
+    end
+    state.terminalPromptOpen = true
+
+    overlay:showTerminalPrompt(function(allowed)
+        state.terminalPromptOpen = false
+        if allowed then
+            writeTerminalGuardState("allow", terminalGuardDecisionSeconds, messages:get("terminal_guard.state_reason.allow"))
+            hs.alert.show(messages:get("terminal_guard.alert.allow"), 2)
+            logger:marker("terminal guard decision=allow duration=" .. tostring(terminalGuardDecisionSeconds))
+        else
+            writeTerminalGuardState("block", terminalGuardDecisionSeconds, messages:get("terminal_guard.state_reason.block"))
+            hs.alert.show(messages:get("terminal_guard.alert.block"), 2)
+            logger:marker("terminal guard decision=block duration=" .. tostring(terminalGuardDecisionSeconds))
+        end
+    end)
+end
+
+local function openConfigEditor(sectionLabel)
+    local _, ok = hs.execute("open " .. shellQuote(configFilePath), true)
+    if ok then
+        logger:marker("open config editor section=" .. tostring(sectionLabel or "config"))
+    else
+        hs.alert.show("Could not open config file", 2)
+    end
+end
+
+local function editMenuItem(label)
+    return {
+        title = "Edit " .. tostring(label),
+        fn = function()
+            openConfigEditor(label)
+        end,
+    }
+end
+
+local function workdayLabel()
+    local names = {
+        [1] = "Sun",
+        [2] = "Mon",
+        [3] = "Tue",
+        [4] = "Wed",
+        [5] = "Thu",
+        [6] = "Fri",
+        [7] = "Sat",
+    }
+    local labels = {}
+    for wday = 1, 7 do
+        if config.schedule.workdays and config.schedule.workdays[wday] == true then
+            table.insert(labels, names[wday])
+        end
+    end
+    return #labels > 0 and table.concat(labels, ", ") or "Every day"
+end
+
+local function appendRuleGroup(items, heading, values)
+    if not values or #values == 0 then
+        return
+    end
+    local submenu = {
+        editMenuItem(heading),
+        { title = "-" },
+    }
+    for _, value in ipairs(values) do
+        table.insert(submenu, {
+            title = tostring(value),
+            disabled = true,
+        })
+    end
+    table.insert(items, {
+        title = heading,
+        disabled = false,
+        menu = submenu,
+    })
+end
+
+local function appendSection(items, heading, lines)
+    if not lines or #lines == 0 then
+        return
+    end
+    local submenu = {
+        editMenuItem(heading),
+        { title = "-" },
+    }
+    for _, line in ipairs(lines) do
+        table.insert(submenu, {
+            title = tostring(line),
+            disabled = true,
+        })
+    end
+    table.insert(items, {
+        title = heading,
+        disabled = false,
+        menu = submenu,
+    })
+end
 
 local function strictModeActive()
     -- BLOCK mode only applies when the schedule is active and the current
@@ -79,7 +215,68 @@ local function currentSnapshot()
         browser = browserContext,
     }
     snapshot.classification = classifier:classify(snapshot)
+    state.lastClassification = snapshot.classification
     return snapshot
+end
+
+local function activeRulesMenu()
+    local scheduleConfig = config.schedule or {}
+    local locationState = locationMode.lastState or {}
+    local strict = strictModeActive()
+    local modeLabel = strict and "BLOCK" or "ALLOW"
+    local snapshot = currentSnapshot()
+    local browser = snapshot.browser or {}
+    local frontmostLabel = snapshot.app or "No frontmost app"
+    if browser.host then
+        frontmostLabel = tostring(frontmostLabel) .. " - " .. tostring(browser.host)
+    elseif snapshot.window_title then
+        frontmostLabel = tostring(frontmostLabel) .. " - " .. tostring(snapshot.window_title)
+    end
+
+    local items = {}
+    appendSection(items, "System", {
+        "Current mode: " .. modeLabel,
+        strict and "Enforcement: active now" or "Enforcement: paused right now",
+        "Frontmost: " .. frontmostLabel,
+        "Classifier: " .. classifier:statusSummary(snapshot),
+        "Last event: " .. tostring(logger:lastMarker() or "none"),
+        "Overlay: " .. overlay:statusSummary(),
+    })
+    appendSection(items, schedule:title(), {
+        schedule:description(),
+        schedule:statusSummary(),
+        string.format("Window: %s-%s on %s", timeLabel(scheduleConfig.start_hour), timeLabel(scheduleConfig.end_hour), workdayLabel()),
+    })
+    appendSection(items, locationMode:title(), {
+        locationMode:description(),
+        locationMode:statusSummary(),
+        "Raw state: " .. tostring(locationState.mode or "unknown"),
+    })
+    appendSection(items, appBlocker:title(), {
+        appBlocker:description(),
+        appBlocker:statusSummary(),
+    })
+    appendRuleGroup(items, "  Blocked apps", config.blocked_apps)
+    appendSection(items, browserFilter:title(), {
+        browserFilter:description(),
+        browserFilter:statusSummary(),
+    })
+    appendRuleGroup(items, "  Allowed domains", config.browser and config.browser.allowed_domains)
+    appendRuleGroup(items, "  Blocked domains", config.browser and config.browser.blocked_domains)
+    appendRuleGroup(items, "  Blocked title terms", config.browser and config.browser.blocked_title_terms)
+    appendSection(items, classifier:title(), {
+        classifier:description(),
+        classifier:statusSummary(snapshot),
+    })
+    appendRuleGroup(items, "  Research apps", config.categories and config.categories.research_apps)
+    appendRuleGroup(items, "  Research keywords", config.categories and config.categories.research_keywords)
+    appendRuleGroup(items, "  Distraction keywords", config.categories and config.categories.distraction_keywords)
+
+    return {
+        title = "Research Mode Dashboard",
+        mode = modeLabel,
+        items = items,
+    }
 end
 
 local function enforce()
@@ -97,6 +294,7 @@ local function enforce()
 
     -- In ALLOW mode we still log activity, but we do not actively intervene.
     if not state.strictMode then
+        state.terminalPromptOpen = false
         return
     end
 
@@ -162,9 +360,19 @@ local function startReloadWatcher()
     state.reloadWatcher:start()
 end
 
+hs.urlevent.bind("terminal-check-prompt", function()
+    if strictModeActive() then
+        showTerminalCheckPrompt()
+        return
+    end
+
+    writeTerminalGuardState("allow", terminalGuardDecisionSeconds, messages:get("terminal_guard.state_reason.inactive_allow"))
+end)
+
 -- Start GPS polling immediately so the script knows whether it should begin in
 -- ALLOW or BLOCK mode.
 locationMode:start()
+locationMode:setMenuProvider(activeRulesMenu)
 startReloadWatcher()
 
 -- App activation events give the script fast feedback when the user switches

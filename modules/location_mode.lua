@@ -5,31 +5,23 @@ local LocationMode = {}
 LocationMode.__index = LocationMode
 
 local function statusImage(title, fillColor, textColor)
-    -- Render a small rounded badge that can sit inside the macOS menu bar.
-    local canvas = hs.canvas.new({ x = 0, y = 0, w = 64, h = 22 })
+    -- Render a compact high-contrast badge that stays readable in the menu bar.
+    local canvas = hs.canvas.new({ x = 0, y = 0, w = 54, h = 18 })
     canvas[1] = {
         type = "rectangle",
         action = "fill",
-        roundedRectRadii = { xRadius = 12, yRadius = 12 },
+        roundedRectRadii = { xRadius = 9, yRadius = 9 },
         fillColor = fillColor,
         frame = { x = 0, y = 0, w = "100%", h = "100%" },
     }
     canvas[2] = {
-        type = "rectangle",
-        action = "fill",
-        roundedRectRadii = { xRadius = 9, yRadius = 9 },
-        fillColor = { white = 1, alpha = 0.16 },
-        frame = { x = 3, y = 2, w = 58, h = 8 },
-    }
-    canvas[3] = {
         type = "text",
         text = title,
-        textSize = 11,
+        textSize = 9,
         textFont = ".AppleSystemUIFont",
-        textFontStyle = "bold",
         textColor = textColor,
         textAlignment = "center",
-        frame = { x = 0, y = 4, w = "100%", h = 14 },
+        frame = { x = 0, y = 3, w = "100%", h = 12 },
     }
     local image = canvas:imageFromCanvas()
     if image and image.setTemplate then
@@ -52,7 +44,34 @@ function LocationMode.new(config, logger)
     }
     self.statusItem = nil
     self.timer = nil
+    self.menuProvider = nil
+    self.lastMenuSignature = nil
     return self
+end
+
+function LocationMode:title()
+    return "Location Mode"
+end
+
+function LocationMode:description()
+    return "Reads GPS state and decides whether the system should stay relaxed or enforce BLOCK."
+end
+
+local function menuText(value, fallback)
+    if value == nil or value == "" then
+        return fallback or "unknown"
+    end
+    return tostring(value)
+end
+
+local function normalizedMenuItem(item)
+    if type(item) == "table" then
+        return item
+    end
+    return {
+        title = tostring(item),
+        disabled = true,
+    }
 end
 
 local function writeStateFile(path, state)
@@ -70,6 +89,18 @@ local function writeStateFile(path, state)
     file:close()
 end
 
+local function stateEquals(left, right)
+    if left == right then
+        return true
+    end
+    if type(left) ~= "table" or type(right) ~= "table" then
+        return false
+    end
+    return left.mode == right.mode
+        and left.relaxed == right.relaxed
+        and left.reason == right.reason
+end
+
 function LocationMode:_updateMenubar()
     -- Keep a real menu bar item on the top-right and give it a pill-like icon.
     if not self.statusItem then
@@ -79,27 +110,88 @@ function LocationMode:_updateMenubar()
         return
     end
     local title = "LOC ?"
-    local fillColor = { red = 0.18, green = 0.18, blue = 0.18, alpha = 0.95 }
-    local color = { white = 1, alpha = 1 }
+    local fillColor = { red = 0.15, green = 0.15, blue = 0.15, alpha = 1 }
+    local color = { red = 1, green = 1, blue = 1, alpha = 1 }
     if self.lastState.mode ~= "unknown" then
         if self.lastState.relaxed == true then
             title = "ALLOW"
-            fillColor = { red = 0.21, green = 0.73, blue = 0.36, alpha = 0.98 }
+            fillColor = { red = 0.12, green = 0.62, blue = 0.28, alpha = 1 }
         else
             title = "BLOCK"
-            fillColor = { red = 0.62, green = 0.16, blue = 0.16, alpha = 0.96 }
+            fillColor = { red = 0.72, green = 0.12, blue = 0.12, alpha = 1 }
         end
     end
-    self.statusItem:setTitle("")
-    self.statusItem:setIcon(statusImage(title, fillColor, color), false)
-    self.statusItem:setTooltip("Location mode: " .. tostring(self.lastState.mode) .. " (" .. title .. ")")
+    local tooltip = "Location mode: " .. tostring(self.lastState.mode) .. " (" .. title .. ")"
+    local signature = table.concat({
+        title,
+        tostring(self.lastState.mode),
+        tostring(self.lastState.reason),
+        tostring(self.lastState.relaxed),
+    }, "|")
+    if self.lastMenuSignature ~= signature then
+        self.statusItem:setTitle("")
+        self.statusItem:setIcon(statusImage(title, fillColor, color), false)
+        self.statusItem:setTooltip(tooltip)
+        self.lastMenuSignature = signature
+    end
+    if not self.menuInstalled then
+        self.statusItem:setMenu(function()
+            return self:_buildMenu()
+        end)
+        self.menuInstalled = true
+    end
+end
+
+function LocationMode:_buildMenu()
+    local summary = nil
+    if type(self.menuProvider) == "function" then
+        local ok, result = pcall(self.menuProvider, self)
+        if ok and type(result) == "table" then
+            summary = result
+        elseif not ok and self.logger then
+            self.logger:marker("menubar menu error=" .. tostring(result))
+        end
+    end
+
+    local menu = {
+        {
+            title = menuText(summary and summary.title, "Location Rules"),
+            disabled = true,
+        },
+        {
+            title = "Mode: " .. menuText(summary and summary.mode, self.lastState.relaxed and "ALLOW" or "BLOCK"),
+            disabled = true,
+        },
+        {
+            title = "Location: " .. menuText(self.lastState.reason, "unknown"),
+            disabled = true,
+        },
+    }
+
+    local items = summary and summary.items or {}
+    if #items > 0 then
+        table.insert(menu, { title = "-" })
+        for _, item in ipairs(items) do
+            table.insert(menu, normalizedMenuItem(item))
+        end
+    end
+
+    return menu
+end
+
+function LocationMode:setMenuProvider(provider)
+    self.menuProvider = provider
+    self:_updateMenubar()
 end
 
 function LocationMode:_setState(nextState)
     -- Centralize state writes so the in-memory state, menubar, and state file
     -- all stay consistent.
+    local changed = not stateEquals(self.lastState, nextState)
     self.lastState = nextState
-    self:_updateMenubar()
+    if changed or not self.statusItem then
+        self:_updateMenubar()
+    end
     local statePath = self.config.state_path
         or (self.rootConfig.user and self.rootConfig.user.geofence_state_path)
         or (os.getenv("HOME") .. "/.hammerspoon/manage-py-geofence.state")
@@ -224,6 +316,11 @@ function LocationMode:isRelaxed()
     -- "relaxed" is what init.lua actually cares about when deciding whether
     -- BLOCK enforcement should be active.
     return self.lastState.relaxed == true
+end
+
+function LocationMode:statusSummary()
+    local mode = self.lastState.relaxed and "ALLOW" or "BLOCK"
+    return mode .. " via " .. tostring(self.lastState.reason or "unknown")
 end
 
 return LocationMode

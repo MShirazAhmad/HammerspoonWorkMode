@@ -10,6 +10,14 @@ function Schedule.new(config)
     return self
 end
 
+function Schedule:title()
+    return "Schedule"
+end
+
+function Schedule:description()
+    return "Acts as the time gate so enforcement only runs during your configured work window."
+end
+
 function Schedule:isActiveNow()
     -- When scheduling is disabled, the caller should treat time as always valid.
     if self.config.enabled == false then
@@ -26,6 +34,10 @@ function Schedule:isActiveNow()
     local startHour = self.config.start_hour or 0
     local endHour = self.config.end_hour or 24
     return now.hour >= startHour and now.hour < endHour
+end
+
+function Schedule:statusSummary()
+    return self:isActiveNow() and "Inside work hours" or "Outside work hours"
 end
 
 return Schedule
