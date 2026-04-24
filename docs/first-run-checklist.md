@@ -64,7 +64,8 @@ While inside the geofence (`BLOCK`):
 1. open a supported browser
 2. visit a blocked website
 3. bring the tab to the front
-4. see whether the browser is hidden or the blocker responds
+4. see whether the red warning overlay appears
+5. close the distracting tab or window and confirm the warning clears
 
 ### 8. Overlay Test
 

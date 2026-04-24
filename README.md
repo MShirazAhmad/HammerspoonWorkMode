@@ -1,11 +1,11 @@
 # HammerspoonWorkMode
 
-`HammerspoonWorkMode` is a GPS-aware Hammerspoon configuration for protecting research time.
+`HammerspoonWorkMode` is a GPS-aware Hammerspoon configuration for protecting research time on macOS.
 
 The idea is simple and very practical:
 
 - you define one location as your enforced work zone, such as your lab or desk
-- when you are physically sitting in that location, the system actively controls your behavior and blocks distractions
+- when you are physically sitting in that location, the system actively enforces your focus rules
 - when you leave that location, the system relaxes and lets you use your MacBook freely
 
 That means your desk is your guarded zone for focused work, and everywhere else becomes your freedom zone.
@@ -49,7 +49,7 @@ If you want the least confusing first setup, open:
 Think of it like this:
 
 - when you are physically at your work location, such as your lab desk, the system enforces focus rules
-- blocked apps are closed, distracting websites are interrupted, and off-task behavior triggers overlays
+- blocked apps are closed, distracting websites raise a red warning, and off-task behavior can trigger overlays
 - once you leave that location, the system relaxes completely and lets you use your MacBook freely
 
 Inside the enforced zone, the system reacts to things like:
@@ -116,8 +116,8 @@ In short:
 Default behavior:
 
 - blocked apps are closed if they become active
-- distracting browser URLs and titles trigger enforcement
-- off-task behavior can trigger a full-screen overlay
+- distracting browser URLs and titles show the red warning overlay until the distracting tab/window is closed or changed
+- off-task behavior can trigger a full-screen red warning
 - repeated violations increase lockout duration
 - events and snapshots are logged for later review
 - tools like Terminal, Claude, or other apps on the block list are force-closed
@@ -132,7 +132,7 @@ Default behavior:
 
 - app blocking is off
 - browser enforcement is off
-- overlays do not appear
+- enforcement overlays do not appear
 - activity is still logged
 - the menubar shows `ALLOW`
 
@@ -194,13 +194,19 @@ The specific domains, title terms, thresholds, and blocked apps live in `~/.hamm
   Detects frontmost blocked apps and closes them during `BLOCK` mode.
 
 - `~/.hammerspoon/modules/browser_filter.lua`
-  Reads frontmost browser tab title and URL using AppleScript, checks against allowed and blocked lists, and hides the browser when a distracting tab is detected.
+  Reads frontmost browser tab title and URL using AppleScript, checks against allowed and blocked lists, and raises the red warning overlay while a distracting tab/window remains active.
 
 - `~/.hammerspoon/modules/activity_classifier.lua`
   Classifies visible activity as `research`, `neutral`, or `off_task` based on app, domain, and title keywords.
 
 - `~/.hammerspoon/modules/overlay.lua`
-  Shows the full-screen intervention UI, countdown timer, and escalating lockout behavior.
+  Coordinates overlay timing and chooses between the red warning surface and the block/prompt surface.
+
+- `~/.hammerspoon/modules/red_warning_overlay.lua`
+  Draws the full-desktop red warning glow. It overdraws beyond the normal screen bounds so the warning reaches the notch/menu-bar and Dock edges.
+
+- `~/.hammerspoon/modules/block_screen_overlay.lua`
+  Draws the separate hard-block or confirmation prompt screen.
 
 - `~/.hammerspoon/modules/logger.lua`
   Writes marker logs and JSON activity logs.
@@ -266,6 +272,7 @@ Then use:
 - keep the geofence accurate
 - keep blocked apps limited to things you genuinely do not want during research blocks
 - keep allowed domains narrow and intentional
+- use the ALLOW/BLOCK menubar pill's `Test red warning` action after visual changes
 - review the log files occasionally to see whether the rules are doing what you expect
 
 ### Tuning Philosophy

@@ -205,8 +205,22 @@ return {
             "manuscript",
         },
     },
-    overlay = {
-        -- Visual canvas settings. User-facing text lives in config/messages.yaml.
+    red_warning_overlay = {
+        -- Awareness overlay shown when activity is drifting out of track.
+        -- User-facing text lives in config/messages.yaml.
         background_alpha = 0.96,
+        background_image_path = home .. "/.hammerspoon/assets/screens/soft-red-vignette-overlay.svg",
+        background_pulse = {
+            enabled = true,
+            min_alpha = 0.45,
+            max_alpha = 1.0,
+            cycle_seconds = 2.8,
+            tick_seconds = 0.03,
+        },
+    },
+    block_screen_overlay = {
+        -- Separate hard-block/prompt screen. Keep this visually distinct from
+        -- the red warning overlay so warning and blocking behavior stay clear.
+        background_color = { red = 0, green = 0, blue = 0, alpha = 0.96 },
     },
 }

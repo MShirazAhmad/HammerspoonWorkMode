@@ -44,8 +44,8 @@ You are in `BLOCK` mode and switch to a distracting tab.
 Result:
 
 - `browser_filter.lua` sees a blocked domain or title term
-- the browser is hidden
-- `overlay.lua` shows a full-screen warning or lockout
+- `overlay.lua` shows the red warning overlay
+- closing the distracting tab or window clears the warning
 - `logger.lua` records the violation
 
 ## Example 4: Neutral But Ambiguous Activity

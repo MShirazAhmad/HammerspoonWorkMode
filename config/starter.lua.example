@@ -116,7 +116,18 @@ return {
             "dissertation",
         },
     },
-    overlay = {
+    red_warning_overlay = {
         background_alpha = 0.96,
+        background_image_path = home .. "/.hammerspoon/assets/screens/soft-red-vignette-overlay.svg",
+        background_pulse = {
+            enabled = true,
+            min_alpha = 0.45,
+            max_alpha = 1.0,
+            cycle_seconds = 2.8,
+            tick_seconds = 0.03,
+        },
+    },
+    block_screen_overlay = {
+        background_color = { red = 0, green = 0, blue = 0, alpha = 0.96 },
     },
 }

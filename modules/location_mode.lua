@@ -168,6 +168,14 @@ function LocationMode:_buildMenu()
         },
     }
 
+    local actions = summary and summary.actions or {}
+    if #actions > 0 then
+        table.insert(menu, { title = "-" })
+        for _, item in ipairs(actions) do
+            table.insert(menu, normalizedMenuItem(item))
+        end
+    end
+
     local items = summary and summary.items or {}
     if #items > 0 then
         table.insert(menu, { title = "-" })

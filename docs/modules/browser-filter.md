@@ -7,7 +7,7 @@ This module looks at your front browser tab and checks:
 - the website address
 - the tab title
 
-If the current page looks distracting during `BLOCK` mode, the browser can be hidden and the blocker can respond.
+If the current page looks distracting during `BLOCK` mode, the red warning overlay appears so you can close the distracting tab or window.
 
 This module is useful because browsers can be both:
 
@@ -101,7 +101,8 @@ If nothing is listed, this module has nothing to block.
 2. Open a supported browser
 3. Visit a blocked site such as YouTube
 4. Bring the tab to the front
-5. See whether the browser is hidden and enforcement happens
+5. See whether the red warning overlay appears
+6. Close the distracting tab or window and confirm the warning clears
 
 ## If It Does Not Work
 

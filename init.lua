@@ -116,6 +116,11 @@ local function editMenuItem(label)
     }
 end
 
+local function testRedWarningOverlay()
+    overlay:showRedWarningTest(10)
+    logger:marker("red warning overlay test duration=10")
+end
+
 local function workdayLabel()
     local names = {
         [1] = "Sun",
@@ -191,11 +196,15 @@ local function strictModeActive()
     return true
 end
 
-local function handleViolation(kind, details)
+local function handleViolation(kind, details, activePredicate)
     -- Every violation increments the escalation counter, shows the overlay,
     -- and writes a marker entry that explains what triggered enforcement.
     state.violationCount = state.violationCount + 1
-    overlay:showIntervention(kind, details, state.violationCount)
+    if activePredicate then
+        overlay:showInterventionWhile(kind, details, state.violationCount, activePredicate)
+    else
+        overlay:showIntervention(kind, details, state.violationCount)
+    end
     logger:marker("violation kind=" .. tostring(kind) .. " details=" .. tostring(details and details.reason or ""))
 end
 
@@ -275,6 +284,12 @@ local function activeRulesMenu()
     return {
         title = "Research Mode Dashboard",
         mode = modeLabel,
+        actions = {
+            {
+                title = "Test red warning",
+                fn = testRedWarningOverlay,
+            },
+        },
         items = items,
     }
 end
@@ -303,7 +318,9 @@ local function enforce()
     local browserResult = browserFilter:detectDistraction()
     if browserResult then
         browserFilter:enforce(browserResult)
-        handleViolation("browser", browserResult)
+        handleViolation("browser", browserResult, function()
+            return browserFilter:isSourceStillDistracting(browserResult)
+        end)
         return
     end
 
@@ -367,6 +384,10 @@ hs.urlevent.bind("terminal-check-prompt", function()
     end
 
     writeTerminalGuardState("allow", terminalGuardDecisionSeconds, messages:get("terminal_guard.state_reason.inactive_allow"))
+end)
+
+hs.urlevent.bind("test-red-warning", function()
+    testRedWarningOverlay()
 end)
 
 -- Start GPS polling immediately so the script knows whether it should begin in

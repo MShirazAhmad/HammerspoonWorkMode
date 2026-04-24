@@ -2,21 +2,25 @@
 
 ## What This Module Does
 
-This module creates the full-screen warning screen.
+This module coordinates the full-screen warning and block screens.
 
 It is the part of the project you actually see when the blocker steps in.
 
-The overlay can show:
+The red warning overlay is awareness-only. It can show:
 
 - a warning message
 - a reason
 - a countdown timer
 
-If you keep drifting, the overlay can stay longer.
+The block screen is separate and is reserved for hard prompts or blocking flows.
+
+If you keep drifting, warning durations can stay longer.
 
 ## File Used By This Module
 
 - `~/.hammerspoon/modules/overlay.lua`
+- `~/.hammerspoon/modules/red_warning_overlay.lua`
+- `~/.hammerspoon/modules/block_screen_overlay.lua`
 
 ## Settings You Need To Edit
 
@@ -26,7 +30,8 @@ Open:
 
 Important sections:
 
-- `overlay`
+- `red_warning_overlay`
+- `block_screen_overlay`
 - `timers`
 - `thresholds`
 
@@ -34,7 +39,7 @@ Most important settings:
 
 - `overlay.title`
 - `overlay.subtitle`
-- `overlay.background_alpha`
+- `red_warning_overlay.background_alpha`
 - `timers.overlay_default_seconds`
 - `timers.lockout_base_seconds`
 - `thresholds.max_violations_before_long_lockout`
@@ -77,11 +82,11 @@ Try:
 
 ## How To Test It
 
-1. Make sure you are in `BLOCK` mode
-2. Open a blocked website or blocked app
-3. Wait for the blocker to respond
-4. Check whether the overlay appears
-5. Check whether the timer behaves as expected
+1. Open the ALLOW/BLOCK menubar pill
+2. Choose `Test red warning`
+3. Confirm the red warning reaches the notch/menu-bar and Dock edges
+4. For live behavior, open a blocked website in `BLOCK` mode
+5. Close or change the distracting tab/window and confirm the warning clears
 
 ## Best Advice For Non-Programmers
 
