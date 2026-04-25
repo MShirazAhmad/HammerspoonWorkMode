@@ -22,7 +22,7 @@ function RedWarningOverlay:message(key, fallback)
 end
 
 function RedWarningOverlay:_settings()
-    return self.config.red_warning_overlay or self.config.overlay or {}
+    return self.config.red_warning_overlay or {}
 end
 
 local function imageElement(path)
