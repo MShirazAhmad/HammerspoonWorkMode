@@ -1,5 +1,48 @@
--- RedWarningOverlay is the awareness overlay: a red full-screen warning that
--- tells the user they are drifting out of track. It is not the block screen.
+-- red_warning_overlay.lua — Pulsing full-screen awareness overlay for violations.
+--
+-- ROLE IN THE SYSTEM
+-- ------------------
+-- RedWarningOverlay is the SOFT enforcement surface. It covers all displays
+-- with a red (or image-backed) full-screen overlay and a countdown timer, but
+-- it does NOT intercept mouse clicks — the user can still see and interact
+-- with the app behind it (to close a distracting tab, for example).
+-- This contrasts with BlockScreenOverlay, which is opaque, mouse-blocking,
+-- and used only for the terminal guard hard prompt.
+--
+-- Shown by: Overlay:showIntervention() and Overlay:showInterventionWhile()
+-- Hidden by: Overlay:hide() when countdown expires or activePredicate → false.
+--
+-- MULTI-SCREEN SUPPORT
+-- --------------------
+-- _fitToDesktopScreens() creates one canvas per connected display (via
+-- hs.screen.allScreens()) and is called on every show(). Canvases are
+-- re-used across show() calls; only the count and frames are updated.
+-- Surplus canvases are deleted; new screens get a fresh canvas.
+--
+-- COORDINATE SYSTEM NOTE
+-- ----------------------
+-- Each canvas is created slightly larger than its screen (expandedFrame adds
+-- 160 px padding on all sides). This overdraw ensures the red glow reaches
+-- behind the macOS menu bar and Dock, which sit in special regions that would
+-- otherwise show through a normally-sized canvas. The text elements are then
+-- positioned relative to the REAL screen frame using offsetX/offsetY so they
+-- appear centered on the visible area, not inside the overdraw gutter.
+--
+-- PULSE ANIMATION
+-- ---------------
+-- A fast timer (default 30 ms tick) calls _refreshPulse() which computes a
+-- sinusoidal alpha value from elapsed time. The pulse drives the background
+-- rectangle or image alpha between min_alpha and max_alpha over cycle_seconds.
+-- Pulse can be disabled in config.red_warning_overlay.background_pulse.enabled.
+--
+-- BACKGROUND IMAGE
+-- ----------------
+-- If config.red_warning_overlay.background_image_path points to a valid image
+-- (SVG, PNG, etc.), it is used instead of the plain red rectangle. The image
+-- is loaded once in newCanvas and reused across show() calls on that canvas.
+-- If the path is missing or the image fails to load, falls back to a solid
+-- red rectangle.
+
 local RedWarningOverlay = {}
 RedWarningOverlay.__index = RedWarningOverlay
 
@@ -7,7 +50,10 @@ function RedWarningOverlay.new(config, messages)
     local self = setmetatable({}, RedWarningOverlay)
     self.config = config
     self.messages = messages
+    -- canvases[i] corresponds to hs.screen.allScreens()[i].
     self.canvases = {}
+    -- backgroundElementTypes[i] is "image" or "rectangle" for canvases[i],
+    -- used by _setBackgroundAlpha to know which property to animate.
     self.backgroundElementTypes = {}
     self.pulseTimer = nil
     self.pulseStartedAt = 0
@@ -25,6 +71,9 @@ function RedWarningOverlay:_settings()
     return self.config.red_warning_overlay or {}
 end
 
+-- imageElement tries to load a background image from path. Returns nil if the
+-- path is empty or the image cannot be loaded, which causes the caller to fall
+-- back to a plain red rectangle.
 local function imageElement(path)
     if type(path) ~= "string" or path == "" then
         return nil
@@ -41,6 +90,7 @@ local function imageElement(path)
     }
 end
 
+-- screenFrames returns one fullFrame per connected display (never empty).
 local function screenFrames()
     local frames = {}
     for _, screen in ipairs(hs.screen.allScreens() or {}) do
@@ -52,10 +102,11 @@ local function screenFrames()
     return frames
 end
 
+-- expandedFrame adds 160 px overdraw on all sides of a screen frame.
+-- This is needed because macOS reserves the menu bar and Dock in regions that
+-- sit outside the "normal" screen content area. Without overdraw the red
+-- background would stop short and the reserved areas would show through.
 local function expandedFrame(frame)
-    -- macOS keeps the notch/menu bar and Dock in special regions. Overdraw the
-    -- canvas beyond the normal screen bounds so the warning glow reaches those
-    -- edges instead of stopping at the desktop-safe area.
     local padding = 160
     return {
         x = frame.x - padding,
@@ -67,15 +118,14 @@ end
 
 local function clamp(value, minimum, maximum)
     value = tonumber(value) or minimum
-    if value < minimum then
-        return minimum
-    end
-    if value > maximum then
-        return maximum
-    end
+    if value < minimum then return minimum end
+    if value > maximum then return maximum end
     return value
 end
 
+-- _setBackgroundAlpha updates the alpha of canvas element [1] for all canvases.
+-- For image elements it uses imageAlpha (scaled by 0.5 to keep images subtle),
+-- for rectangle elements it sets fillColor.alpha directly.
 function RedWarningOverlay:_setBackgroundAlpha(alpha)
     for index, canvas in ipairs(self.canvases) do
         if self.backgroundElementTypes[index] == "image" then
@@ -86,10 +136,11 @@ function RedWarningOverlay:_setBackgroundAlpha(alpha)
     end
 end
 
+-- _refreshPulse computes the current pulse alpha using a triangle wave over
+-- cycle_seconds and applies it via _setBackgroundAlpha. Called every tick_seconds
+-- (default 30 ms) by pulseTimer.
 function RedWarningOverlay:_refreshPulse()
-    if #self.canvases == 0 then
-        return
-    end
+    if #self.canvases == 0 then return end
 
     local pulse = self:_settings().background_pulse or {}
     local minimum = clamp(pulse.min_alpha or 0.45, 0, 1)
@@ -97,11 +148,14 @@ function RedWarningOverlay:_refreshPulse()
     local cycle = math.max(0.1, tonumber(pulse.cycle_seconds) or 2.8)
     local elapsed = (hs.timer.secondsSinceEpoch() - self.pulseStartedAt) % cycle
     local phase = elapsed / cycle
+    -- Triangle wave: rises 0→1 over the first half-cycle, falls 1→0 over the second.
     local amount = phase < 0.5 and (phase * 2) or ((1 - phase) * 2)
 
     self:_setBackgroundAlpha(minimum + ((maximum - minimum) * amount))
 end
 
+-- _startPulse initialises the pulse animation. If pulse.enabled = false in
+-- config, it sets a static alpha instead.
 function RedWarningOverlay:_startPulse()
     if self.pulseTimer then
         self.pulseTimer:stop()
@@ -122,11 +176,14 @@ function RedWarningOverlay:_startPulse()
     end)
 end
 
+-- _newCanvas creates a fresh canvas for one display frame. The canvas uses
+-- "assistiveTechHigh" level (above Dock/menu/status bars) rather than
+-- "screenSaver" because the red overlay is awareness-only and should not
+-- prevent the user from dismissing the offending app.
+-- Element indices: [1]=background, [2]=title, [3]=body, [4]=subtitle, [5]=footer.
 function RedWarningOverlay:_newCanvas(frame)
     local settings = self:_settings()
     local canvas = hs.canvas.new(expandedFrame(frame))
-    -- assistiveTechHigh sits above Dock/menu/status window levels, which is
-    -- necessary for this overlay to read as a whole-desktop warning.
     canvas:level("assistiveTechHigh")
     canvas:behavior({ "canJoinAllSpaces", "stationary", "fullScreenAuxiliary", "ignoresCycle", "transient" })
 
@@ -137,40 +194,36 @@ function RedWarningOverlay:_newCanvas(frame)
         frame = { x = 0, y = 0, w = "100%", h = "100%" },
     }
     canvas[2] = {
-        type = "text",
-        text = self:message("overlay.title"),
-        textSize = 68,
-        textColor = { white = 1, alpha = 1 },
+        type = "text", text = self:message("overlay.title"),
+        textSize = 68, textColor = { white = 1, alpha = 1 },
         textAlignment = "center",
         frame = { x = "10%", y = "18%", w = "80%", h = "12%" },
     }
     canvas[3] = {
-        type = "text",
-        text = "",
-        textSize = 34,
-        textColor = { red = 1, green = 0.35, blue = 0.35, alpha = 1 },
+        type = "text", text = "",
+        textSize = 34, textColor = { red = 1, green = 0.35, blue = 0.35, alpha = 1 },
         textAlignment = "center",
         frame = { x = "12%", y = "38%", w = "76%", h = "22%" },
     }
     canvas[4] = {
-        type = "text",
-        text = "",
-        textSize = 26,
-        textColor = { white = 1, alpha = 0.92 },
+        type = "text", text = "",
+        textSize = 26, textColor = { white = 1, alpha = 0.92 },
         textAlignment = "center",
         frame = { x = "16%", y = "60%", w = "68%", h = "12%" },
     }
     canvas[5] = {
-        type = "text",
-        text = "",
-        textSize = 44,
-        textColor = { white = 1, alpha = 1 },
+        type = "text", text = "",
+        textSize = 44, textColor = { white = 1, alpha = 1 },
         textAlignment = "center",
         frame = { x = "30%", y = "78%", w = "40%", h = "10%" },
     }
     return canvas
 end
 
+-- _fitCanvas repositions text elements inside a canvas whose frame was resized
+-- (e.g. after display rearrangement). The background element uses the full
+-- expanded canvas; text elements are aligned to the real screen frame using
+-- offsetX/offsetY to account for the overdraw padding.
 function RedWarningOverlay:_fitCanvas(canvas, frame)
     local canvasFrame = expandedFrame(frame)
     canvas:frame(canvasFrame)
@@ -178,8 +231,6 @@ function RedWarningOverlay:_fitCanvas(canvas, frame)
     local height = frame.h
     local offsetX = frame.x - canvasFrame.x
     local offsetY = frame.y - canvasFrame.y
-    -- The background uses the expanded canvas, while text remains aligned to
-    -- the real display frame so copy does not drift into the overdraw gutter.
     canvas[1].frame = { x = 0, y = 0, w = canvasFrame.w, h = canvasFrame.h }
     canvas[2].frame = { x = offsetX + (width * 0.10), y = offsetY + (height * 0.18), w = width * 0.80, h = height * 0.12 }
     canvas[3].frame = { x = offsetX + (width * 0.12), y = offsetY + (height * 0.38), w = width * 0.76, h = height * 0.22 }
@@ -187,6 +238,9 @@ function RedWarningOverlay:_fitCanvas(canvas, frame)
     canvas[5].frame = { x = offsetX + (width * 0.30), y = offsetY + (height * 0.78), w = width * 0.40, h = height * 0.10 }
 end
 
+-- _fitToDesktopScreens reconciles self.canvases with the current screen list.
+-- Surplus canvases are deleted; missing ones are created; all are resized.
+-- Called at the start of every show() so display changes take effect immediately.
 function RedWarningOverlay:_fitToDesktopScreens()
     local frames = screenFrames()
     while #self.canvases < #frames do
@@ -223,6 +277,9 @@ function RedWarningOverlay:setFooter(text)
     end
 end
 
+-- hide() stops the pulse animation and hides all canvases. The canvases are
+-- NOT deleted because show() re-uses them on the next violation, avoiding
+-- the overhead of recreating canvas windows each time.
 function RedWarningOverlay:hide()
     if self.pulseTimer then
         self.pulseTimer:stop()
@@ -233,6 +290,8 @@ function RedWarningOverlay:hide()
     end
 end
 
+-- isCreated returns true if any canvas has been allocated. Used by
+-- Overlay:_refresh() to avoid updating an uninitialised instance.
 function RedWarningOverlay:isCreated()
     return #self.canvases > 0
 end

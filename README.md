@@ -25,6 +25,8 @@ If you are opening this project for the first time, follow these documents in th
 
 If you want the shortest possible path, use the quick start below.
 
+If you are an AI coding agent working on this repo, read `AGENTS.md` first. It contains the compact architecture map, enforcement order, path-blocking rules, and validation commands.
+
 ## Quick Start
 
 1. Install Hammerspoon on your Mac.
@@ -43,6 +45,19 @@ If you want the least confusing first setup, open:
 
 - `docs/fill-in-5-values.md`
 - `config/starter.lua.example`
+
+## Privacy Note
+
+Runtime files are intentionally ignored by git. Do not publish your local logs, GPS state, terminal decision state, or path decision state files.
+
+Examples that should stay local:
+
+- `*.state`
+- `*.log`
+- `allowed-folders.state`
+- `exact-allowed-paths.state`
+- `blocked-paths.state`
+- `exact-blocked-paths.state`
 
 ## What This Really Means In Daily Life
 
