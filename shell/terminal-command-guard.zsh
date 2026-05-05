@@ -8,6 +8,10 @@ if [[ -o interactive ]]; then
   typeset -gr _research_geofence_max_age_seconds="${RESEARCH_GEOFENCE_MAX_AGE_SECONDS:-180}"
   typeset -gr _research_messages_file="${RESEARCH_MESSAGES_FILE:-$HOME/.hammerspoon/config/messages.yaml}"
   typeset -gr _terminal_command_guard_state_file="${TERMINAL_COMMAND_GUARD_STATE_FILE:-$HOME/.hammerspoon/terminal-command-guard.state}"
+  typeset -gr _allowed_folders_state_file="${ALLOWED_FOLDERS_STATE_FILE:-$HOME/.hammerspoon/allowed-folders.state}"
+  typeset -gr _exact_allowed_paths_state_file="${EXACT_ALLOWED_PATHS_STATE_FILE:-$HOME/.hammerspoon/exact-allowed-paths.state}"
+  typeset -gr _blocked_paths_state_file="${BLOCKED_PATHS_STATE_FILE:-$HOME/.hammerspoon/blocked-paths.state}"
+  typeset -gr _exact_blocked_paths_state_file="${EXACT_BLOCKED_PATHS_STATE_FILE:-$HOME/.hammerspoon/exact-blocked-paths.state}"
   typeset -g _terminal_command_guard_reason=""
   typeset -gi _terminal_command_guard_remaining_seconds=0
   typeset -gi _terminal_command_guard_last_prompt_request=0
@@ -112,6 +116,77 @@ if [[ -o interactive ]]; then
     command open -g "hammerspoon://terminal-check-prompt" >/dev/null 2>&1 &!
   }
 
+  _is_path_allowed() {
+    local target_path="$1"
+    local allowed_paths_file="$_allowed_folders_state_file"
+    local exact_allowed_paths_file="$_exact_allowed_paths_state_file"
+
+    [[ -n "$target_path" ]] || return 1
+    [[ -r "$allowed_paths_file" ]] || return 0  # No restrictions if file doesn't exist
+
+    # Normalize the target path (resolve symlinks)
+    target_path="$(cd "$target_path" 2>/dev/null && pwd -P)" || return 1
+
+    # Exact-only allowed paths do not grant access to descendants.
+    if [[ -r "$exact_allowed_paths_file" ]]; then
+      while IFS= read -r allowed_path; do
+        [[ -z "$allowed_path" ]] && continue
+        [[ "$allowed_path" == "~"* ]] && allowed_path="${HOME}${allowed_path:1}"
+        if [[ "$target_path" == "$allowed_path" ]]; then
+          return 0
+        fi
+      done < "$exact_allowed_paths_file"
+    fi
+
+    # Check if target path matches or is under any allowed path
+    while IFS= read -r allowed_path; do
+      [[ -z "$allowed_path" ]] && continue
+      [[ "$allowed_path" == "~"* ]] && allowed_path="${HOME}${allowed_path:1}"
+      # Direct match
+      if [[ "$target_path" == "$allowed_path" ]]; then
+        return 0
+      fi
+      # Path is under allowed folder
+      if [[ "$target_path" == "$allowed_path"/* ]]; then
+        return 0
+      fi
+    done < "$allowed_paths_file"
+
+    return 1
+  }
+
+  _is_path_denied() {
+    local target_path="$1"
+    local blocked_paths_file="$_blocked_paths_state_file"
+    local exact_blocked_paths_file="$_exact_blocked_paths_state_file"
+    local blocked_path
+
+    [[ -n "$target_path" ]] || return 1
+    target_path="$(cd "$target_path" 2>/dev/null && pwd -P)" || return 1
+
+    if [[ -r "$exact_blocked_paths_file" ]]; then
+      while IFS= read -r blocked_path; do
+        [[ -z "$blocked_path" ]] && continue
+        [[ "$blocked_path" == "~"* ]] && blocked_path="${HOME}${blocked_path:1}"
+        if [[ "$target_path" == "$blocked_path" ]]; then
+          return 0
+        fi
+      done < "$exact_blocked_paths_file"
+    fi
+
+    if [[ -r "$blocked_paths_file" ]]; then
+      while IFS= read -r blocked_path; do
+        [[ -z "$blocked_path" ]] && continue
+        [[ "$blocked_path" == "~"* ]] && blocked_path="${HOME}${blocked_path:1}"
+        if [[ "$target_path" == "$blocked_path" || "$target_path" == "$blocked_path"/* ]]; then
+          return 0
+        fi
+      done < "$blocked_paths_file"
+    fi
+
+    return 1
+  }
+
   _terminal_command_guard_is_blocked() {
     local mode="" until_epoch="" reason="" key value
     _terminal_command_guard_needs_prompt=0
@@ -214,13 +289,47 @@ if [[ -o interactive ]]; then
   }
 
   _terminal_command_guard_accept_line() {
-    if [[ -n "${BUFFER//[[:space:]]/}" ]] && _terminal_command_guard_is_blocked; then
-      if (( _terminal_command_guard_needs_prompt )); then
-        _terminal_command_guard_request_prompt
+    if [[ -n "${BUFFER//[[:space:]]/}" ]]; then
+      # Check for cd commands to non-allowed folders
+      local cmd_first_word="${BUFFER%%[[:space:]]*}"
+      if [[ "$cmd_first_word" == "cd" ]]; then
+        # Extract the target path (simple parsing for common cases)
+        local target_path="${BUFFER#cd}"
+        target_path="${target_path##[[:space:]]}"
+        target_path="${target_path%%[[:space:]]*}"
+
+        # If target_path looks like a cd argument, check if it's allowed
+        if [[ -n "$target_path" && "$target_path" != -* ]]; then
+          # Expand ~ if needed
+          [[ "$target_path" == "~"* ]] && target_path="${HOME}${target_path:1}"
+
+          if _is_path_denied "$target_path" 2>/dev/null; then
+            print -P -- "%F{red}cd: folder access blocked by saved path decision%f"
+            zle reset-prompt
+            return 0
+          fi
+
+          # Check if path is allowed
+          if ! _is_path_allowed "$target_path" 2>/dev/null; then
+            if _terminal_command_guard_is_blocked; then
+              print -P -- "%F{red}cd: folder access blocked%f"
+              _terminal_command_guard_message
+              zle reset-prompt
+              return 0
+            fi
+          fi
+        fi
       fi
-      _terminal_command_guard_message
-      zle reset-prompt
-      return 0
+
+      # Regular command blocking check
+      if _terminal_command_guard_is_blocked; then
+        if (( _terminal_command_guard_needs_prompt )); then
+          _terminal_command_guard_request_prompt
+        fi
+        _terminal_command_guard_message
+        zle reset-prompt
+        return 0
+      fi
     fi
 
     zle .accept-line

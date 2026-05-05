@@ -8,6 +8,20 @@ Thumbs.db
 
 # Local runtime/debug output
 *.log
+*.state
+allowed-folders.state
+exact-allowed-paths.state
+blocked-paths.state
+exact-blocked-paths.state
+manage-py-geofence.state
+terminal-command-guard.state
+web-activity.log
+hard-blocker.marker.log
+launchd.stdout.log
+launchd.stderr.log
 
 # Local editor history
 .history/
+
+# Local/private config overrides
+config/local.lua
