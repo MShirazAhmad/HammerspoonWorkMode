@@ -373,7 +373,7 @@ local function activeRulesMenu()
         filePathBlocker:description(),
         filePathBlocker:statusSummary(),
     })
-    appendRuleGroup(items, "  Allowed file paths", config.file_path_blocker and config.file_path_blocker.allowed_paths)
+    appendRuleGroup(items, "  Allowed folder paths", config.file_path_blocker and config.file_path_blocker.allowed_paths)
     appendSection(items, classifier:title(), {
         classifier:description(),
         classifier:statusSummary(snapshot),
@@ -441,14 +441,14 @@ local function enforce()
         return
     end
 
-    -- Layer 2.25: file paths — kill any app with open document paths outside
+    -- Layer 2.25: folder paths — kill any app with open document folders outside
     -- the configured blocked roots. Unknown paths prompt once for a persistent
     -- allow/block decision before enforcement continues.
     local blockedFilePath = filePathBlocker:detectViolation()
     if blockedFilePath then
         filePathBlocker:enforce(blockedFilePath)
         handleFixedViolation(
-            "file path",
+            "folder path",
             blockedFilePath,
             (config.file_path_blocker and config.file_path_blocker.violation_overlay_seconds) or 5
         )
@@ -464,12 +464,12 @@ local function enforce()
                 if approved then
                     filePathBlocker:approvePath(unknownFilePath.path)
                     hs.alert.show("Path allowed: " .. tostring(unknownFilePath.path), 2)
-                    logger:marker("file_path_blocker path_approved_by_user path=" .. tostring(unknownFilePath.path))
+                    logger:marker("file_path_blocker folder_approved_by_user path=" .. tostring(unknownFilePath.path))
                 else
                     filePathBlocker:blockPath(unknownFilePath.path)
                     filePathBlocker:enforce(unknownFilePath)
                     handleFixedViolation(
-                        "file path",
+                        "folder path",
                         {
                             reason = "Blocked path after user decision:\n" .. tostring(unknownFilePath.path),
                         },

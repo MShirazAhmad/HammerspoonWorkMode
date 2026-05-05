@@ -43,7 +43,7 @@ Current `enforce()` order:
 
 - `modules/browser_filter.lua`: AppleScript browser URL/title inspection.
 - `modules/app_blocker.lua`: immediate `kill9()` for configured frontmost apps.
-- `modules/file_path_blocker.lua`: strict file/folder path enforcement via Accessibility and targeted process/lsof checks.
+- `modules/file_path_blocker.lua`: strict folder path enforcement via Accessibility and targeted process/lsof checks; file paths are reduced to their containing folder before decisions.
 - `modules/folder_blocker.lua`: folder approval/state workflow, older and softer than `file_path_blocker`.
 - `modules/http_blocker.lua`: system HTTP firewall updates.
 - `modules/overlay.lua`: gateway for red warning overlays and full-screen prompts.
@@ -96,7 +96,7 @@ The terminal guard reads:
 
 `overlay:showIntervention()` uses normal/escalating durations.
 
-`handleFixedViolation()` in `init.lua` is used for fixed-duration warnings such as file path violations. Current file path violations use `file_path_blocker.violation_overlay_seconds`, usually `5`.
+`handleFixedViolation()` in `init.lua` is used for fixed-duration warnings such as folder path violations. Current folder path violations use `file_path_blocker.violation_overlay_seconds`, usually `5`.
 
 ## Validation Commands
 
@@ -112,7 +112,7 @@ Check shell syntax:
 zsh -n shell/terminal-command-guard.zsh
 ```
 
-Dry-run file path blocking:
+Dry-run folder path blocking:
 
 ```bash
 /Applications/Hammerspoon.app/Contents/Frameworks/hs/hs -c 'package.path = hs.configdir .. "/?.lua;" .. hs.configdir .. "/?/init.lua;" .. package.path; local config=require("config.default"); local B=require("modules.file_path_blocker"); local b=B.new(config,{marker=function() end}); local rows={}; for _,i in ipairs(b:scanOpenFilePaths()) do if i.allowed == false then table.insert(rows,{app=i.app,path=i.path,title=i.title}) end end; return hs.json.encode(rows,true)'

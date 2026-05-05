@@ -56,7 +56,7 @@ return {
         -- folders such as $HOME or a projects root: the folder itself is allowed,
         -- but children are not automatically allowed.
         exact_allowed_paths_state_path = home .. "/.hammerspoon/exact-allowed-paths.state",
-        -- Paths denied from the file path prompt. Recursive and exact variants
+        -- Paths denied from the folder path prompt. Recursive and exact variants
         -- mirror the allowed path state files.
         blocked_paths_state_path = home .. "/.hammerspoon/blocked-paths.state",
         exact_blocked_paths_state_path = home .. "/.hammerspoon/exact-blocked-paths.state",
@@ -152,9 +152,9 @@ return {
         },
     },
 
-    -- File path blocker scans Accessibility AXDocument/AXFilename/AXURL values
-    -- for opened files. During BLOCK mode, any exposed path outside allowed_paths
-    -- kills the owning app immediately and shows a fixed short warning.
+    -- Folder path blocker scans Accessibility AXDocument/AXFilename/AXURL values
+    -- and reduces files to their containing folder. During BLOCK mode, a known
+    -- blocked folder kills the owning app; unknown folders prompt for a decision.
     file_path_blocker = {
         enabled = true,
         violation_overlay_seconds = 5,

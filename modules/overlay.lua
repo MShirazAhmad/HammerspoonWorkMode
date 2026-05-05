@@ -328,7 +328,7 @@ function Overlay:showFolderApprovalPrompt(folderPath, callback)
     -- Show the folder approval prompt with custom message
     self.activeOverlay:show(
         self:message("folder_blocker.prompt.title", "IS THIS WORK?"),
-        self:message("folder_blocker.prompt.question", "Allow this path during work mode?\n" .. displayPath),
+        self:message("folder_blocker.prompt.question", "Allow this folder during work mode?\n" .. displayPath),
         self:message("folder_blocker.prompt.instructions", "Y = Allow  |  N = Block"),
         self:message("folder_blocker.prompt.waiting", "Waiting for your response..."),
         fire

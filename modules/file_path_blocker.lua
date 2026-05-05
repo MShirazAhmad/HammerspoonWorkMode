@@ -1,8 +1,8 @@
 -- file_path_blocker.lua — Strict document path enforcement during BLOCK mode.
 --
 -- This module scans Accessibility document attributes for open windows across
--- running apps. Known allowed paths pass, known blocked paths are killed, and
--- unknown paths can be routed through a one-time approval prompt in init.lua.
+-- running apps. It reduces files to their containing folder before checking
+-- rules, so allowing or blocking a folder applies to everything inside it.
 
 local FilePathBlocker = {}
 FilePathBlocker.__index = FilePathBlocker
@@ -101,6 +101,13 @@ local function pathIsUnder(path, root)
     return path:sub(1, #root + 1) == root .. "/"
 end
 
+local function dirname(path)
+    if not path or path == "/" then return path end
+    local parent = path:match("^(.*)/[^/]+$")
+    if parent == "" then return "/" end
+    return parent or path
+end
+
 local function shellQuote(value)
     return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
 end
@@ -133,11 +140,11 @@ function FilePathBlocker.new(config, logger)
 end
 
 function FilePathBlocker:title()
-    return "File Path Blocker"
+    return "Folder Path Blocker"
 end
 
 function FilePathBlocker:description()
-    return "Asks about unknown opened paths, allows approved paths, and kills apps that access denied paths during BLOCK mode."
+    return "Asks about unknown opened folders, allows approved folders, and kills apps that access denied folders during BLOCK mode."
 end
 
 function FilePathBlocker:_settings()
@@ -276,14 +283,27 @@ function FilePathBlocker:pathStatus(path)
     return "unknown"
 end
 
+function FilePathBlocker:_folderPathForPath(path)
+    local normalized = normalizePath(path)
+    if not normalized then return nil end
+    local mode = hs.fs.attributes(normalized, "mode")
+    if mode == "directory" then
+        return normalized
+    end
+    return dirname(normalized)
+end
+
 function FilePathBlocker:_pathResult(appName, bundleID, pid, title, path, source)
-    local status = self:pathStatus(path)
+    local folderPath = self:_folderPathForPath(path)
+    if not folderPath then return nil end
+    local status = self:pathStatus(folderPath)
     return {
         app = appName,
         bundle_id = bundleID,
         pid = pid,
         title = title,
-        path = path,
+        path = folderPath,
+        raw_path = normalizePath(path),
         source = source,
         status = status,
         allowed = status == "allowed",
@@ -342,7 +362,8 @@ function FilePathBlocker:scanOpenFilePaths()
                 for _, path in ipairs(self:_finderWindowPaths()) do
                     local normalized = normalizePath(path)
                     if normalized then
-                        table.insert(results, self:_pathResult(appName, bundleID, app:pid(), "Finder window", normalized, "finder"))
+                        local result = self:_pathResult(appName, bundleID, app:pid(), "Finder window", normalized, "finder")
+                        if result then table.insert(results, result) end
                     end
                 end
             end
@@ -362,7 +383,8 @@ function FilePathBlocker:scanOpenFilePaths()
                         path = self:_documentPathForWindow(windowElement)
                     end
                     if path then
-                        table.insert(results, self:_pathResult(appName, bundleID, app:pid(), title, path, "window"))
+                        local result = self:_pathResult(appName, bundleID, app:pid(), title, path, "window")
+                        if result then table.insert(results, result) end
                     end
                 end
             end
@@ -420,17 +442,21 @@ function FilePathBlocker:scanHeadlessProcessPaths()
         local pid, command = line:match("^%s*(%d+)%s+(.+)$")
         if pid and pid ~= selfPid and self:_processMatches(settings, command) then
             for path, _ in pairs(self:_processOpenPaths(pid)) do
-                table.insert(results, {
-                    app = command:match("([^/ ]+)$") or "process",
-                    pid = tonumber(pid),
-                    title = command,
-                    path = path,
-                    source = "process",
-                    status = self:pathStatus(path),
-                })
-                results[#results].allowed = results[#results].status == "allowed"
-                results[#results].blocked = results[#results].status == "blocked"
-                results[#results].unknown = results[#results].status == "unknown"
+                local folderPath = self:_folderPathForPath(path)
+                if folderPath then
+                    table.insert(results, {
+                        app = command:match("([^/ ]+)$") or "process",
+                        pid = tonumber(pid),
+                        title = command,
+                        path = folderPath,
+                        raw_path = path,
+                        source = "process",
+                        status = self:pathStatus(folderPath),
+                    })
+                    results[#results].allowed = results[#results].status == "allowed"
+                    results[#results].blocked = results[#results].status == "blocked"
+                    results[#results].unknown = results[#results].status == "unknown"
+                end
             end
         end
     end
@@ -447,7 +473,7 @@ function FilePathBlocker:detectViolation()
                 self.lastViolationKey = key
                 self.lastViolationAt = now
                 item.reason = string.format(
-                    "Disallowed file path opened by %s:\n%s",
+                    "Disallowed folder opened by %s:\n%s",
                     tostring(item.app or "unknown app"),
                     tostring(item.path)
                 )
@@ -463,7 +489,7 @@ function FilePathBlocker:detectViolation()
                 self.lastViolationKey = key
                 self.lastViolationAt = now
                 item.reason = string.format(
-                    "Disallowed file path accessed by %s:\n%s",
+                    "Disallowed folder accessed by %s:\n%s",
                     tostring(item.app or ("pid " .. tostring(item.pid))),
                     tostring(item.path)
                 )
@@ -483,7 +509,7 @@ function FilePathBlocker:detectUnknownPath()
                 self.lastUnknownKey = key
                 self.lastUnknownAt = now
                 item.reason = string.format(
-                    "New file path opened by %s:\n%s",
+                    "New folder opened by %s:\n%s",
                     tostring(item.app or "unknown app"),
                     tostring(item.path)
                 )
@@ -499,7 +525,7 @@ function FilePathBlocker:detectUnknownPath()
                 self.lastUnknownKey = key
                 self.lastUnknownAt = now
                 item.reason = string.format(
-                    "New file path accessed by %s:\n%s",
+                    "New folder accessed by %s:\n%s",
                     tostring(item.app or ("pid " .. tostring(item.pid))),
                     tostring(item.path)
                 )
@@ -508,11 +534,6 @@ function FilePathBlocker:detectUnknownPath()
         end
     end
     return nil
-end
-
-function FilePathBlocker:_decisionIsRecursive(path)
-    local mode = hs.fs.attributes(path, "mode")
-    return mode == "directory"
 end
 
 function FilePathBlocker:_statePath(kind)
@@ -531,38 +552,24 @@ function FilePathBlocker:_statePath(kind)
 end
 
 function FilePathBlocker:approvePath(path)
-    local normalized = normalizePath(path)
+    local normalized = self:_folderPathForPath(path)
     if not normalized then return false end
-    if self:_decisionIsRecursive(normalized) then
-        self.allowedPaths[normalized] = true
-        self.blockedPaths[normalized] = nil
-        savePathSet(self:_statePath("allowed"), self.allowedPaths)
-        savePathSet(self:_statePath("blocked"), self.blockedPaths)
-    else
-        self.exactAllowedPaths[normalized] = true
-        self.exactBlockedPaths[normalized] = nil
-        savePathSet(self:_statePath("exactAllowed"), self.exactAllowedPaths)
-        savePathSet(self:_statePath("exactBlocked"), self.exactBlockedPaths)
-    end
-    self.logger:marker("file_path_blocker path_approved path=" .. tostring(normalized))
+    self.allowedPaths[normalized] = true
+    self.blockedPaths[normalized] = nil
+    savePathSet(self:_statePath("allowed"), self.allowedPaths)
+    savePathSet(self:_statePath("blocked"), self.blockedPaths)
+    self.logger:marker("file_path_blocker folder_approved path=" .. tostring(normalized))
     return true
 end
 
 function FilePathBlocker:blockPath(path)
-    local normalized = normalizePath(path)
+    local normalized = self:_folderPathForPath(path)
     if not normalized then return false end
-    if self:_decisionIsRecursive(normalized) then
-        self.blockedPaths[normalized] = true
-        self.allowedPaths[normalized] = nil
-        savePathSet(self:_statePath("blocked"), self.blockedPaths)
-        savePathSet(self:_statePath("allowed"), self.allowedPaths)
-    else
-        self.exactBlockedPaths[normalized] = true
-        self.exactAllowedPaths[normalized] = nil
-        savePathSet(self:_statePath("exactBlocked"), self.exactBlockedPaths)
-        savePathSet(self:_statePath("exactAllowed"), self.exactAllowedPaths)
-    end
-    self.logger:marker("file_path_blocker path_blocked path=" .. tostring(normalized))
+    self.blockedPaths[normalized] = true
+    self.allowedPaths[normalized] = nil
+    savePathSet(self:_statePath("blocked"), self.blockedPaths)
+    savePathSet(self:_statePath("allowed"), self.allowedPaths)
+    self.logger:marker("file_path_blocker folder_blocked path=" .. tostring(normalized))
     return true
 end
 
