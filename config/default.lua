@@ -29,7 +29,7 @@
 
 local home = os.getenv("HOME")
 
-return {
+local config = {
     user = {
         -- JSONL-style activity snapshots (one JSON object per line).
         -- Read by analysis scripts; never read by the enforcement system itself.
@@ -348,3 +348,25 @@ return {
         background_color = { red = 0, green = 0, blue = 0, alpha = 0.96 },
     },
 }
+
+local function mergeTable(base, override)
+    for key, value in pairs(override or {}) do
+        if type(value) == "table" and type(base[key]) == "table" then
+            mergeTable(base[key], value)
+        else
+            base[key] = value
+        end
+    end
+    return base
+end
+
+local localPath = (hs and hs.configdir or (home .. "/.hammerspoon")) .. "/config/local.lua"
+local localChunk = loadfile(localPath)
+if localChunk then
+    local ok, localConfig = pcall(localChunk)
+    if ok and type(localConfig) == "table" then
+        mergeTable(config, localConfig)
+    end
+end
+
+return config
