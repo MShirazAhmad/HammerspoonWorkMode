@@ -79,6 +79,6 @@ Trigger a blocked action and check:
 
 Read:
 
-- `docs/troubleshooting.md`
+- [Troubleshooting](troubleshooting.md)
 
 That is the fastest way to find the most likely cause.

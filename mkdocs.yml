@@ -1,0 +1,65 @@
+site_name: HammerspoonWorkMode
+site_description: GPS-aware Hammerspoon configuration for protecting research time on macOS.
+site_url: https://hammerspoonworkmode.readthedocs.io/
+repo_url: https://github.com/MShirazAhmad/HammerspoonWorkMode
+repo_name: MShirazAhmad/HammerspoonWorkMode
+
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: red
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: red
+      accent: deep orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Setup:
+    - Getting Started: getting-started.md
+    - Installation: setup.md
+    - Fill In 5 Values: fill-in-5-values.md
+    - Permissions: permissions.md
+    - Find GPS Coordinates: find-gps-coordinates.md
+    - Find App Names: find-app-names.md
+    - First Run Checklist: first-run-checklist.md
+  - Configuration Reference: configuration.md
+  - Module Guides:
+    - Overview: modules/README.md
+    - Location Mode: modules/location-mode.md
+    - Schedule: modules/schedule.md
+    - App Blocker: modules/app-blocker.md
+    - Browser Filter: modules/browser-filter.md
+    - Activity Classifier: modules/activity-classifier.md
+    - Overlay: modules/overlay.md
+    - File Path Blocker: modules/file-path-blocker.md
+    - Folder Blocker: modules/folder-blocker.md
+    - HTTP Blocker: modules/http-blocker.md
+    - Messages: modules/messages.md
+    - Logger: modules/logger.md
+  - Workflow Examples: workflow-examples.md
+  - Troubleshooting: troubleshooting.md
+  - Contributing:
+    - Contributing to Docs: contributing.md
+    - Project Guidelines: project-guidelines.md

@@ -36,7 +36,7 @@ Follow these steps in order.
 
 If you want an even shorter path, also open:
 
-- `docs/fill-in-5-values.md`
+- [Fill In 5 Values](fill-in-5-values.md)
 - `config/starter.lua.example`
 
 ### Step 1: Put The Project In `~/.hammerspoon`
@@ -47,7 +47,7 @@ Make sure these exist:
 - `~/.hammerspoon/modules/`
 - `~/.hammerspoon/config/`
 
-If you need help, read `docs/setup.md`.
+If you need help, read [Installation](setup.md).
 
 ### Step 2: Open The Main Settings File
 
@@ -96,7 +96,7 @@ That means:
 
 When you leave, the system relaxes completely.
 
-If you do not know these values, read `docs/find-gps-coordinates.md`.
+If you do not know these values, read [How To Find GPS Coordinates](find-gps-coordinates.md).
 
 ## Step 4: Keep The First Version Small
 
@@ -124,7 +124,7 @@ You must give Hammerspoon permission to:
 
 Read:
 
-- `docs/permissions.md`
+- [Permissions](permissions.md)
 
 ## Step 6: Reload Hammerspoon
 
@@ -146,12 +146,12 @@ Now test the system:
 
 For a more complete test, read:
 
-- `docs/first-run-checklist.md`
+- [First Run Checklist](first-run-checklist.md)
 
 ## If Something Goes Wrong
 
 Read:
 
-- `docs/troubleshooting.md`
+- [Troubleshooting](troubleshooting.md)
 
 That document covers the most common first-time problems.
