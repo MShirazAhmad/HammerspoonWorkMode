@@ -25,3 +25,6 @@ launchd.stderr.log
 
 # Local/private config overrides
 config/local.lua
+
+# MkDocs build output
+site/

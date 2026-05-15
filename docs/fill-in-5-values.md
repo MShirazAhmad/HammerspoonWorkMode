@@ -110,7 +110,7 @@ That file shows a small beginner-friendly setup with obvious placeholders.
 
 Read:
 
-- `docs/find-gps-coordinates.md`
-- `docs/find-app-names.md`
-- `docs/first-run-checklist.md`
-- `docs/troubleshooting.md`
+- [How To Find GPS Coordinates](find-gps-coordinates.md)
+- [How To Find App Names](find-app-names.md)
+- [First Run Checklist](first-run-checklist.md)
+- [Troubleshooting](troubleshooting.md)

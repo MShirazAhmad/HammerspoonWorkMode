@@ -12,7 +12,11 @@ These guides are written for someone who is not a programmer and just wants to s
 4. [Browser Filter](./browser-filter.md)
 5. [Activity Classifier](./activity-classifier.md)
 6. [Overlay](./overlay.md)
-7. [Logger](./logger.md)
+7. [File Path Blocker](./file-path-blocker.md)
+8. [Folder Blocker](./folder-blocker.md)
+9. [HTTP Blocker](./http-blocker.md)
+10. [Messages](./messages.md)
+11. [Logger](./logger.md)
 
 ## Important Idea
 

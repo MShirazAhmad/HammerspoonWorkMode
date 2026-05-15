@@ -23,7 +23,7 @@ Check:
 
 Read:
 
-- `docs/find-gps-coordinates.md`
+- [How To Find GPS Coordinates](find-gps-coordinates.md)
 
 ## Browser Blocking Does Not Work
 
@@ -44,7 +44,7 @@ Check:
 
 Read:
 
-- `docs/find-app-names.md`
+- [How To Find App Names](find-app-names.md)
 
 ## The Overlay Never Appears
 
@@ -85,9 +85,9 @@ Try:
 
 Use this order:
 
-1. `docs/getting-started.md`
-2. `docs/permissions.md`
-3. `docs/first-run-checklist.md`
-4. `docs/find-gps-coordinates.md`
-5. `docs/find-app-names.md`
-6. `docs/modules/README.md`
+1. [Getting Started](getting-started.md)
+2. [Permissions](permissions.md)
+3. [First Run Checklist](first-run-checklist.md)
+4. [How To Find GPS Coordinates](find-gps-coordinates.md)
+5. [How To Find App Names](find-app-names.md)
+6. [Module Guides](modules/README.md)
